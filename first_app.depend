@@ -1,0 +1,15 @@
+# depslib dependency file v1.0
+1741586123 source:c:\users\prestigio\first_app\main.cpp
+	"consoleio.h"
+
+1741586324 source:c:\users\prestigio\first_app\consoleio.h
+	<iostream>
+
+1741586324 c:\users\prestigio\first_app\consoleio.h
+	<iostream>
+
+1741586324 source:c:\users\prestigio\first_app\cosoleio.cpp
+	"consoleio.h"
+	<iomanip>
+	<bitset>
+

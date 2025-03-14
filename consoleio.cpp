@@ -3,93 +3,104 @@
 #include <bitset>
 #include <string.h>
 
-//////////////////////
-// Global namespace //
-//////////////////////
+//////////////////////////////////////////////////////
+// Module global namespace                          //
+//////////////////////////////////////////////////////
 using namespace std;
 
-///////////////////
-// Global macros //
-///////////////////
+//////////////////////////////////////////////////////
+// Module global macros                             //
+//////////////////////////////////////////////////////
 // Space symbol
 #define SP ' '
 
-// Fulfill symbol
+// Fulfill symbol for string representation
+// of integer values
 #define FILL '0'
 
 // Base names in string form
-#define BASE_2_S "binary"
-#define BASE_8_S "octal"
-#define BASE_10_S "decimal"
-#define BASE_16_S "hexadecimal"
+#define BASE_BIN_S "binary"
+#define BASE_OCT_S "octal"
+#define BASE_HEX_S "hexadecimal"
+#define BASE_DEC_S "decimal"
 
-////////////////
-// Data types //
-////////////////
+//////////////////////////////////////////////////////
+// Module global data types                         //
+//////////////////////////////////////////////////////
 
-// Enumeration base numbers for integer values
-enum base_n
+// Enumeration basis value for various base types
+enum basis_n
 {
-    BASE_2_N = 2,
-    BASE_8_N = 8,
-    BASE_16_N = 16,
-    BASE_10_N = 10,
+    BASE_BIN_N = 2, // Binary
+    BASE_OCT_N = 8, // Octal
+    BASE_HEX_N = 16,// Hexadecimal
+    BASE_DEC_N = 10,// Decimal
 };
 
-// Printable width values for integer values
-// of various types and base representations
+// Printable number of characters in string representation
+// of integer values of various types and enumeration bases
 enum base_w
 {
     // Binary
-    BASE_2_W_CHAR = 8,
-    BASE_2_W_SHORT = 16,
-    BASE_2_W_LONG = 32,
-    BASE_2_W_DOUBLE = 64,
+    BASE_BIN_W_CHAR     = 8,
+    BASE_BIN_W_SHORT    = 16,
+    BASE_BIN_W_LONG     = 32,
+    BASE_BIN_W_DOUBLE   = 64,
     // Octal
-    BASE_8_W_CHAR = 3,
-    BASE_8_W_SHORT = 6,
-    BASE_8_W_LONG = 11,
-    BASE_8_W_DOUBLE = 22,
-    // Decimal
-    BASE_10_W_CHAR = 3,
-    BASE_10_W_SHORT = 5,
-    BASE_10_W_LONG = 10,
-    BASE_10_W_DOUBLE = 20,
+    BASE_OCT_W_CHAR     = 3,
+    BASE_OCT_W_SHORT    = 6,
+    BASE_OCT_W_LONG     = 11,
+    BASE_OCT_W_DOUBLE   = 22,
     // Hexadecimal
-    BASE_16_W_CHAR = 2,
-    BASE_16_W_SHORT = 4,
-    BASE_16_W_LONG = 8,
-    BASE_16_W_DOUBLE = 16,
+    BASE_HEX_W_CHAR     = 2,
+    BASE_HEX_W_SHORT    = 4,
+    BASE_HEX_W_LONG     = 8,
+    BASE_HEX_W_DOUBLE   = 16,
+    // Decimal
+    BASE_DEC_W_CHAR     = 3,
+    BASE_DEC_W_SHORT    = 5,
+    BASE_DEC_W_LONG     = 10,
+    BASE_DEC_W_DOUBLE   = 20,
 };
 
-////////////////////////////////////////////
-// Constants used in 'base' class methods //
-////////////////////////////////////////////
+//////////////////////////////////////////////////////
+// Module global objects                            //
+//////////////////////////////////////////////////////
+// Constants used in class methods                  //
+//////////////////////////////////////////////////////
 // Base type name
 static const char*
-base_name[] = {BASE_2_S, BASE_8_S, BASE_16_S, BASE_10_S};
+base_name[] = {BASE_BIN_S, BASE_OCT_S, BASE_HEX_S, BASE_DEC_S};
 
-// Enumeration base number
+// Enumeration basis value
 static const int
-base_num[] = {BASE_2_N, BASE_8_N, BASE_16_N, BASE_10_N);
+base_basis[] = {BASE_BIN_N, BASE_OCT_N, BASE_HEX_N, BASE_DEC_N);
 
 // Printable width of 'char' value in various base types
 static const size_t
-base_w_char[] = {BASE_2_W_CHAR, BASE_8_W_CHAR, BASE_16_W_CHAR, BASE_10_W_CHAR};
+base_w_char[] =
+    {BASE_BIN_W_CHAR, BASE_OCT_W_CHAR, BASE_HEX_W_CHAR, BASE_DEC_W_CHAR};
 
 // Printable width of 'short' value in various base types
 static const size_t
-base_w_short[] = {BASE_2_W_SHORT, BASE_8_W_SHORT, BASE_16_W_SHORT, BASE_10_W_SHORT};
+base_w_short[] =
+    {BASE_BIN_W_SHORT, BASE_OCT_W_SHORT, BASE_HEX_W_SHORT, BASE_DEC_W_SHORT};
 
 // Printable width of 'long' value in various base types
 static const size_t
-base_w_long[] = {BASE_2_W_LONG, BASE_8_W_LONG, BASE_16_W_LONG, BASE_10_W_LONG};
+base_w_long[] =
+    {BASE_BIN_W_LONG, BASE_OCT_W_LONG, BASE_HEX_W_LONG, BASE_DEC_W_LONG};
 
 // Printable width of 'long long' value in various base types
 static const size_t
-base_w_double[] = {BASE_2_W_DOUBLE, BASE_8_W_DOUBLE, BASE_16_W_LONG, BASE_10_W_DOUBLE};
+base_w_double[] =
+    {BASE_BIN_W_DOUBLE, BASE_OCT_W_DOUBLE, BASE_HEX_W_DOUBLE, BASE_DEC_W_DOUBLE};
 
-// Class base methods
+//////////////////////////////////////////////////////
+// Class 'base' methods,                            //
+// see definitions in consoleio.h                   //
+//////////////////////////////////////////////////////
+
 // Constructor
 base::base(base_t type = BASE_DFLT) : base_type(type), base_type_i((int)type)
 base::base(void) : base_type(BASE_DFLT), base_type_i((int)BASE_DFLT)
@@ -101,11 +112,11 @@ base::type(void)
     return base_type;
 }
 
-// Get base number
+// Get base type index
 int
-base::num(void)
+base::type_i(void)
 {
-    return base_num[base_type_i];
+    return base_type_i;
 }
 
 // Get base name
@@ -115,27 +126,68 @@ base::name(void)
     return base_name[base_type_i];
 }
 
-// Get enumerated fields
-#define BASE_GET_INT(_field) \
+// Get basis value
+int
+base::basis(void)
+{
+    return base_basis[base_type_i];
+}
+
+// Get constants
+#define BASE_GET_CONST(_field) \
 size_t                                  \
 base::_field(void)                      \
 {                                       \
     return base_##_field[base_type_i];  \
 }
-BASE_GET_INT(num)
-BASE_GET_INT(w_char)
-BASE_GET_INT(w_short)
-BASE_GET_INT(w_long)
-BASE_GET_INT(w_double)
-#undef BASE_GET_INT
+BASE_GET_CONST(w_char)
+BASE_GET_CONST(w_short)
+BASE_GET_CONST(w_long)
+BASE_GET_CONST(w_double)
+#undef BASE_GET_CONST()
 
-////////////////////
-// Module globals //
-////////////////////
+//////////////////////////////////////////////////////
+// Class 'scalar' methods,                          //
+// see definitio in consoleio.h                     //
+//////////////////////////////////////////////////////
 
-/////////////////////////////
-// Module global functions //
-/////////////////////////////
+// Constructor
+scalar::scalar(scalar_t val_type = SCALAR_DFLT, \
+               base_t val_base = BASE_DFLT) : scalar_type(val_type)
+{
+    scalar_base.base(val_base);
+}
+scalar::scalar(void) : scalar_type(SCALAR_DFLT)
+{
+    scalar_base.base(BASE_DFLT);
+}
+
+// Get scalar value type
+scalar_t
+scalar::val_type(void)
+{
+    return scalar_type;
+}
+
+// Get enumeration base type
+base_t
+scalar::val_base(void)
+{
+    return scalar_base.type();
+}
+
+// Get enumeration base type index
+int
+scalar::val_base_i(void);
+{
+    return scalar_base.type_i();
+}
+
+
+//////////////////////////////////////////////////////
+// Module global functions                          //
+//////////////////////////////////////////////////////
+
 // Convert value from the string decimal form to signed integer.
 //
 // arg[in] str  String representation
@@ -170,7 +222,7 @@ str2unsigned(string &str, base &base, unsigned &val)
 {
     try
     {
-        val = stoul(str, nullptr, base::num());
+        val = stoul(str, nullptr, base::num()); stoul
     }
     catch (invalid_argument(val))
     {
@@ -206,28 +258,91 @@ console_get_base_unsigned(base &base, unsigned &val)
     return rc;
 }
 
-// Put message in char string form onto generic output stream
+// Generic function to get scalar values from strings
 //
-// arg[in] stream Output stream type, cout or cerr
-// arg[in] msg      Message in char string form
-// arg[in] nl       Whether or not put new line on the end
+// arg[in]  val_str     String representation of scalar value
+// arg[in]  scal_type   Scalar type of the value
+// arg[out] val         Returned scalar value
 //
-// return Status, 0 - success, -1 - fault
+// return Status, 0 - on success, -1 on fault
 static int
-console_log_gen(ostream stream, const char *msg, bool nl)
+str2scalar(string &val_str, scalar &scal_type, signed &val)
 {
-    if (msg == 0)
+    int         rc = -1;
+    scalar_t    val_type = scal_type.val_type();
+    base_t      val_base = scal_type.val_base();
+
+    if (val_type == scalar_t::TYPE_DOUBLE ||
+        val_type == scalar_t::TYPE_UDOUBLE)
     {
-        cerr << __FUNCTION__ << "() ERROR: message sting is empty" << endl;
+        cerr << __FUNCTION__ "() 64-bit integers are not supported" << endl;
         return -1;
     }
 
-    if (nl)
-        stream << msg << endl;
+    if (val_base == base_t::BASE_DEC)
+    {
+        if (val_type == scalar_t::TYPE_BYTE ||
+            val_type == scalar_t::TYPE_SHORT ||
+            val_type == scalar_t::TYPE_LONG))
+        {
+            rc = str_dec2signed(val_str, val);
+        }
+        else
+        {
+            rc = str2unsigned(val_str, scal_type.base, val);
+        }
+    }
     else
-        stream << msg;
+    {
+        if (val_type == scalar_t::TYPE_UBYTE ||
+            val_type == scalar_t::TYPE_USHORT ||
+            val_type == scalar_t::TYPE_ULONG))
+        {
+            rc = str2unsigned(val_str, scal_type.base, val);
+        }
+        else
+        {
+            cerr << __FUNCTION__ << "() Signed integer values in non-decimal "
+                "base representation are not supported" << endl;
+        }
+    }
 
-    return 0;
+    return rc;
+}
+static int
+str2scalar(string &val_str, scalar &scal_type, int64_t &val)
+{
+    int         rc = -1;
+    scalar_t    val_type = scal_type.val_type();
+    base_t      val_base = scal_type.val_base();
+
+    if (val_type != scalar_t::TYPE_DOUBLE &&
+        val_type != scalar_t::TYPE_UDOUBLE)
+    {
+        cerr << __FUNCTION__ "() Only 64-bit integers are supported" << endl;
+        return -1;
+    }
+
+    if (val_base == base_t::BASE_DEC)
+    {
+        if (val_type == scalar_t::TYPE_DOUBLE)
+            rc = str_dec2signed(val_str, val);
+        else
+            rc = str2unsigned(val_str, scal_type.base, val);
+    }
+    else
+    {
+        if (val_type == scalar_t::TYPE_UDOUBLE)
+        {
+            rc = str2unsigned(val_str, scal_type.base, val);
+        }
+        else
+        {
+            cerr << __FUNCTION__ << "() Signed integer values in non-decimal "
+                "base representation are not supported" << endl;
+        }
+
+    }
 }
 
 // Put integer value onto generic output stream
@@ -263,66 +378,129 @@ console_put_gen_double(ostream stream, uint64_t val)
 }
 }
 
-////////////////////////
-// Exported functions //
-////////////////////////
-// See definition in consoleio.h
-void
-console_get_user_input(string &input)
-{
-    cin >> input;
-    cin.ignore();
-}
+//////////////////////////////////////////////////////
+// Exported functions                               //
+//////////////////////////////////////////////////////
+// Functions for I/O operations with vector values  //
+//////////////////////////////////////////////////////
+// Functions for I/O operations with string values  //
+//////////////////////////////////////////////////////
 
 // See definition in consoleio.h
 int
-console_get_dec(signed &val)
+stream_get_str(stream_t stream, bool skip_eol, string &input)
 {
-    int rc;
-    string input;
-
-    console_get_user_input(input);
-
-    if ((rc = str_dec2signed(input, val)) != 0)
+    if (stream != stream_t::STREAM_STDIN)
     {
-        cerr
-            << __FUNCTION__ << "() ERROR: Failed to convert user input '"
-            << input << "' to the signed integer value" << endl;
+        cerr << __FUNCTION__
+            "() Stream type value of 'stream' argument "
+            "is not supported" << endl;
+        return -1;
     }
+
+    cin >> input;
+    if (skip_eol)
+        cin.ignore();
+
+    return 0;
+}
+int
+stream_get_str(stream_t stream, bool skip_eol, char **input)
+{
+    int     rc = -1;
+    string  str;
+
+    do {
+        if (input == NULL)
+        {
+            cerr << __FUNCTION__ "() Value 'input' is NULL" << endl;
+            break;
+        }
+
+        if (stream_get_str(stream, skip_eol, str) != 0)
+            break;
+
+        if ((*input = new char[str.length() + 1]) == NULL)
+        {
+            cerr << __FUNCTION__ "() Memory allocation fault" << endl;
+            break;
+        }
+
+        strcpy(*input, str.c_str());
+
+        rc = 0;
+    } while(0);
 
     return rc;
 }
 
 // See definition in consoleio.h
-#define CONSOLE_GET_BASE_UNSIGNED(_name, _base_t) \
-int \
-console_get_##_name(unsigned &val) \
-{ \
-    base base(_base_t); \
-    return console_get_base_unsigned(base, val); \
-}
-/* See definition in consoleio.h */
-CONSOLE_GET_BASE_UNSIGNED(bin, base_t::BASE_2)
-CONSOLE_GET_BASE_UNSIGNED(oct, base_t::BASE_8)
-CONSOLE_GET_BASE_UNSIGNED(dec, base_t::BASE_10)
-CONSOLE_GET_BASE_UNSIGNED(hex, base_t::BASE_16)
-#undef CONSOLE_GET_BASE_UNSIGNED
-
-// Functions to log messages on console.
-//
-// See definition in consoleio.h
 int
-console_log_msg(const char *msg, bool nl)
+stream_put_str(stream_t stream, bool put_endl, const string &val)
 {
-    return console_log_gen(cout, msg, nl);
+    ostream out_stream;
+
+    switch (stream)
+    {
+        case stream_t::STREAM_STDOUT:
+            out_stream = cout;
+            break;
+        case stream_t::STREAM_STDERR:
+            out_stream = cerr;
+            break;
+        default:
+            cerr << __FUNCTION__
+                "() Stream type value of 'stream' argument "
+                "is not supported" << endl;
+            return -1;
+    }
+
+    if (put_endl)
+        out_stream << val << endl;
+    else
+        out_stream << val;
+
+    return 0;
+}
+int
+stream_put_str(stream_t stream, bool put_endl, const char *val)
+{
+    string  str;
+
+    if (val == NULL)
+    {
+        cerr << __FUNCTION__ "() Value 'val' is NULL" << endl;
+        return -1;
+    }
+    if (strlen(val) == 0)
+    {
+        cerr << __FUNCTION__ "() Argument 'val' is empty string" << endl;
+    }
+
+    str = val;
+
+    return stream_put_str(stream, put_endl, str);
 }
 
+//////////////////////////////////////////////////////
+// Functions for I/O operations with scalar values, //
+//////////////////////////////////////////////////////
+
 // See definition in consoleio.h
-int
-console_log_err(const char *msg, bool nl)
-{
-    return console_log_gen(cerr, msg, nl);
+#define STREAM_GET_SCALAR(_val_type) \
+int                                                                 \
+stream_get_scalar(stream_t stream, scalar &type, _val_type &val)    \
+{                                                                   \
+    string input;                                                   \
+                                                                    \
+    if (stream_get_str(stream, true, input) != 0)                   \
+        return -1;                                                  \
+                                                                    \
+    return str2salar(input, type, val);                             \
 }
+STREAM_GET_SCALAR(signed)
+STREAM_GET_SCALAR(int64_t)
+#undef STREAM_GET_SCALAR
 
 // Functions to put scalar integer values onto console.
 //

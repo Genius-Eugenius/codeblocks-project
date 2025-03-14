@@ -13,18 +13,20 @@
 //////////////////////////////////////////////////////////////
 
 // Default prefix string values
-// for integer values string representation
+// for string representation of integer values
 // in various enumeration base types
 #define PREFIX_STR_BIN "d"      // Binary
 #define PREFIX_STR_OCT "o"      // Octal
 #define PREFIX_STR_HEX "0x"     // Hexadecimal
 // No printable prefix for decimal representation
 
-// Default base type, decimal
+// Default enumeration base type - decimal
 #define BASE_DFLT   base_t::BASE_DEC
-#define BASE_DFLT_N 10
 
-// Default type for scalar value, type 'long'
+// Default enumeration basis - 10, decimal enumeration base
+#define BASE_DFLT_N base_n::BASE_DEC_N
+
+// Default value type for scalar value, 'long' integer
 #define SCALAR_DFLT scalar_t::TYPE_LONG
 
 //////////////////////////////////////////////////////////////
@@ -57,12 +59,12 @@ enum class base_t
 {
     BASE_BIN = 0,   // Binary
     BASE_OCT,       // Octal
-    BASE_HEX        // Hexadecimal
+    BASE_HEX,       // Hexadecimal
     BASE_DEC,       // Decimal
 };
 
 // Class to represent enumeration base types
-// of all integer values
+// of integer values
 typedef class base
 {
     private:
@@ -72,22 +74,20 @@ typedef class base
                                 // base type index
     public:
         // Constructor
-        // arg[in] type Enumeration base,
-        //              decimal on default
+        // arg[in] type Enumeration base type
         base(base_t type = BASE_DFLT);
         base(void);
         // Get base type in the form of
-        // base type class and
-        // in the form of integer value
+        // base type enumeration class and
+        // in the form of an integer value
         base_t      type(void);
         int         type_i(void);
-        // Base number
-        int         num(void);
-        // Get base type name
+        // Get get enumeration base type name
         const char *name(void);
-        // Get value printable width
-        // for various types of
-        // integer value
+        // Get enumeration basis value
+        int         basis(void);
+        // Get value printable width in characters
+        // for various types of integer value
         size_t      w_char(void);
         size_t      w_short(void);
         size_t      w_long(void);
@@ -98,8 +98,8 @@ typedef class base
 // of integer values in console I/O operations.
 enum class scalar_t
 {
-    TYPE_CHAR = 0,  // int8_t, char
-    TYPE_UCHAR,     // uint8_t, unsigned char
+    TYPE_BYTE = 0,  // int8_t, char
+    TYPE_UBYTE,     // uint8_t, unsigned char
     TYPE_SHORT,     // int16_t, short
     TYPE_USHORT,    // uint16_t, unsigned short
     TYPE_LONG,      // signed, int, int32_t
@@ -126,7 +126,7 @@ typedef class scalar
         //                      base type,
         //                      BASE_DEC
         //                      on default
-        scalar(type_t val_type = SCALAR_DFLT,
+        scalar(scalar_t val_type = SCALAR_DFLT,
                base_t val_base = BASE_DFLT);
         scalar(void);
         // Get scalar value type
@@ -152,27 +152,30 @@ typedef class scalar
 // arg[in]  stream      Stream type
 // arg[in]  trim_eol    Trim CR/EOL at the end of input string
 // arg[out] input       User input in string form taken from
-//                      taken from input stream
-extern void stream_get_str(stream_t stream,
-                           bool skip_eol, std::string &input);
-extern void stream_get_str(stream_t stream,
-                           bool skip_eol, char *input);
+//                      input stream
+//
+// return 0 - on success, -1 -on fault
+extern int stream_get_str(stream_t stream,
+                            bool skip_eol, std::string &input);
+// Note! Function allocates memory for return value
+extern int stream_get_str(stream_t stream,
+                            bool skip_eol, char **input);
 
 // Get string value from STDIN stream
 // with trimming final CR/EOL sequence
 //
 // arg[out] input   User input in string form
 //                  taken from 'cin' stream
-static inline void
-console_get_str_input(string &input)
+static inline int
+console_get_str(string &input)
 {
-    stream_get_str(stream_t::STREAM_STDIN, true, input);
+    return stream_get_str(stream_t::STREAM_STDIN, true, input);
 }
-static inline void
-console_get_str_input(char *input)
+static inline int
+console_get_str(char **input)
 {
     std::string val;
-    stream_get_str(stream_t::STREAM_STDIN, true, val);
+    return stream_get_str(stream_t::STREAM_STDIN, true, val);
 }
 
 //////////////////////////////////////////////////////
@@ -263,30 +266,23 @@ console_log_err(const char *msg)
 // Generic function to get scalar value from input stream
 //
 // arg[in] type     Scalar value type
-// arg[in] base     Expected enumeration base in string
-//                  representation of integer value in stream
-//                  input
 // arg[out] val     Variable to put received value to
 //
 // return 0 - on success, -1 - on fault
-#define STREAM_GET_SCALAR_GEN(_val_type) \
+#define STREAM_GET_SCALAR(_val_type) \
 extern int stream_get_scalar(stream_t stream,       \
                              scalar &type,          \
                              _val_type &val);
-STREAM_GET_SCALAR_GEN(unsigned)
-STREAM_GET_SCALAR_GEN(signed)
-STREAM_GET_SCALAR_GEN(uint64_t)
-STREAM_GET_SCALAR_GEN(int64_t)
-#undef STREAM_GET_SCALAR_GEN
+STREAM_GET_SCALAR(unsigned)
+STREAM_GET_SCALAR(signed)
+STREAM_GET_SCALAR(uint64_t)
+STREAM_GET_SCALAR(int64_t)
+#undef STREAM_GET_SCALAR
 
 // Get scalar value from STDIN stream in various base
 // representations
 //
 // arg[in] type     Scalar value type
-// arg[in] base     Expected enumeration base in string
-//                  representation of integer value in stream
-//                  input
-//
 // arg[out] val     Variable to put received value to
 //
 // return 0 - on success, -1 - on fault

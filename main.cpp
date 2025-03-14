@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 
     cout << "Enter unsigned integer in hexdecimal form" << endl;
     if (console_get_hex(val_u) == 0){
-        console_log_msg("You've entered unsigned value");
+        console_log_msg("You've entered unsigned value", true);
         console_out_hex(val_u);
     } else {
         console_log_err( __FUNCTION__ "() Failed to get unsigned value from user input");

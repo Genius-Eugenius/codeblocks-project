@@ -14,12 +14,8 @@ using namespace std;
 // Space symbol
 #define SP ' '
 
-// Fullfil symbol
+// Fulfill symbol
 #define FILL '0'
-
-// Default base type, decimal
-#define BASE_DFLT BASE_10
-#define BASE_DFLT_N 10
 
 // Base names in string form
 #define BASE_2_S "binary"
@@ -30,22 +26,14 @@ using namespace std;
 ////////////////
 // Data types //
 ////////////////
-// Enumeration base types for integer values
-enum class base_t
-{
-    BASE_2 = 0,
-    BASE_8,
-    BASE_10,
-    BASE_16,
-};
 
 // Enumeration base numbers for integer values
 enum base_n
 {
     BASE_2_N = 2,
     BASE_8_N = 8,
-    BASE_10_N = 10,
     BASE_16_N = 16,
+    BASE_10_N = 10,
 };
 
 // Printable width values for integer values
@@ -74,80 +62,76 @@ enum base_w
     BASE_16_W_DOUBLE = 16,
 };
 
-// Class to represent enumeration base of all integer values
-class base
-{
-private:
-    // Base type
-    base_t base_type;
-    int base_type_i;
-    // Common constants for all class units
-public:
-    base(base_t type);
-    base()
-    base_t type(void);
-    const char *name(void);
-    int num(void);
-    int w_char(void);
-    int w_short(void);
-    int w_long(void);
-    int w_double(void);
-};
-
-// Class base methods
-// Constructor
-base::base(base_t type) : base_type(type), base_type_i((int)type)
-
-// Get base type
-    base::type(void)
-{
-    return base_type;
-}
-
-// Get enumerated fields
-#define BASE_GET(_field) \
-base::##_field(void) \
-{ \
-    return base_##_field[(int)base_type]; \
-}
-BASE_GET(num)
-BASE_GET(name)
-BASE_GET(w_char)
-BASE_GET(w_short)
-BASE_GET(w_long)
-BASE_GET(w_double)
-#undef BASE_GET
-
-////////////////////
-// Module globals //
-////////////////////
-
 ////////////////////////////////////////////
 // Constants used in 'base' class methods //
 ////////////////////////////////////////////
 // Base type name
 static const char*
-base_name[] = {BASE_2_S, BASE_8_S, BASE_10_S, BASE_16_S};
+base_name[] = {BASE_2_S, BASE_8_S, BASE_16_S, BASE_10_S};
 
-// Enumeration base values
+// Enumeration base number
 static const int
-base_num[] = {BASE_2_N, BASE_8_N, BASE_10_N, BASE_16_N};
+base_num[] = {BASE_2_N, BASE_8_N, BASE_16_N, BASE_10_N);
 
 // Printable width of 'char' value in various base types
-static const int
-base_w_char[] = {BASE_2_W_CHAR, BASE_8_W_CHAR, BASE_10_W_CHAR, BASE_16_W_CHAR};
+static const size_t
+base_w_char[] = {BASE_2_W_CHAR, BASE_8_W_CHAR, BASE_16_W_CHAR, BASE_10_W_CHAR};
 
 // Printable width of 'short' value in various base types
-static const int
-base_w_short[] = {BASE_2_W_SHORT, BASE_8_W_SHORT, BASE_10_W_SHORT, BASE_16_W_SHORT};
+static const size_t
+base_w_short[] = {BASE_2_W_SHORT, BASE_8_W_SHORT, BASE_16_W_SHORT, BASE_10_W_SHORT};
 
 // Printable width of 'long' value in various base types
-static const int
-base_w_long[] = {BASE_2_W_LONG, BASE_8_W_LONG, BASE_10_W_LONG, BASE_16_W_LONG};
+static const size_t
+base_w_long[] = {BASE_2_W_LONG, BASE_8_W_LONG, BASE_16_W_LONG, BASE_10_W_LONG};
 
 // Printable width of 'long long' value in various base types
-static const int
-base_w_double[] = {BASE_2_W_DOUBLE, BASE_8_W_DOUBLE, BASE_10_W_DOUBLE, BASE_16_W_LONG};
+static const size_t
+base_w_double[] = {BASE_2_W_DOUBLE, BASE_8_W_DOUBLE, BASE_16_W_LONG, BASE_10_W_DOUBLE};
+
+// Class base methods
+// Constructor
+base::base(base_t type = BASE_DFLT) : base_type(type), base_type_i((int)type)
+base::base(void) : base_type(BASE_DFLT), base_type_i((int)BASE_DFLT)
+
+// Get base type
+base_t
+base::type(void)
+{
+    return base_type;
+}
+
+// Get base number
+int
+base::num(void)
+{
+    return base_num[base_type_i];
+}
+
+// Get base name
+const char*
+base::name(void)
+{
+    return base_name[base_type_i];
+}
+
+// Get enumerated fields
+#define BASE_GET_INT(_field) \
+size_t                                  \
+base::_field(void)                      \
+{                                       \
+    return base_##_field[base_type_i];  \
+}
+BASE_GET_INT(num)
+BASE_GET_INT(w_char)
+BASE_GET_INT(w_short)
+BASE_GET_INT(w_long)
+BASE_GET_INT(w_double)
+#undef BASE_GET_INT
+
+////////////////////
+// Module globals //
+////////////////////
 
 /////////////////////////////
 // Module global functions //
@@ -232,7 +216,7 @@ console_get_base_unsigned(base &base, unsigned &val)
 static int
 console_log_gen(ostream stream, const char *msg, bool nl)
 {
-    if (msg == 0 || strlen(msg) == 0)
+    if (msg == 0)
     {
         cerr << __FUNCTION__ << "() ERROR: message sting is empty" << endl;
         return -1;
@@ -246,38 +230,37 @@ console_log_gen(ostream stream, const char *msg, bool nl)
     return 0;
 }
 
-static int
-console_put_gen_bin_byte(ostream stream, int val)
-{
-    stream << bitset<8>((uint8_t)val);
-    return 0;
-}
-
-static int
-console_put_gen_bin_short(ostream stream, int val)
-{
-    stream << bitset<16>((uint16_t)val);
-    return 0;
-}
-
-static int
-console_put_gen_bin_long(ostream stream, int val)
-{
-    stream << bitset<32>((uint32_t)val);
-    return 0;
-}
-
-// Put long long integer in binary form onto ostream console
+// Put integer value onto generic output stream
 //
-// arg[in] stream   Output stream, cout or cerr
-// arg[in] val      Value to put
+// arg[in] stream   Output etream, cout or cerr
+// arg[in] val      Value to put to stream in binary form
 //
 // return Status, 0 - success, -1 - fault
+namespace out_bin {
 static int
-console_put_gen_bin_double(ostream stream, uint64_t val)
+console_put_gen_byte(ostream stream, uint8_t val)
 {
-    ostream << bitset<64>(val);
+    stream << setfill(FILL) << setw(BASE_2_W_CHAR) << bitset<8>(val);
     return 0;
+}
+static int
+console_put_gen_short(ostream stream, uint16_t val)
+{
+    stream << setfill(FILL) << setw(BASE_2_W_SHORT) << bitset<16>(val);
+    return 0;
+}
+static int
+console_put_gen_long(ostream stream, uint32_t val)
+{
+    stream << setfill(FILL) << setw(BASE_2_W_LONG) << bitset<32>(val);
+    return 0;
+}
+static int
+console_put_gen_double(ostream stream, uint64_t val)
+{
+    stream << setfill(FILL) << setw(BASE_2_W_DOUBLE) << bitset<64>(val);
+    return 0;
+}
 }
 
 ////////////////////////
@@ -325,7 +308,8 @@ CONSOLE_GET_BASE_UNSIGNED(dec, base_t::BASE_10)
 CONSOLE_GET_BASE_UNSIGNED(hex, base_t::BASE_16)
 #undef CONSOLE_GET_BASE_UNSIGNED
 
-
+// Functions to log messages on console.
+//
 // See definition in consoleio.h
 int
 console_log_msg(const char *msg, bool nl)
@@ -340,30 +324,31 @@ console_log_err(const char *msg, bool nl)
     return console_log_gen(cerr, msg, nl);
 }
 
-#define CONSOLE_PUT_HEX_GEN_SCALAR(_val_type)\
-
-int
-console_out_bin(unsigned val)
-{
-    cout << bitset<32>(val);
-    return 0;
+// Functions to put scalar integer values onto console.
+//
+// See definition in consoleio.h
+#define CONSOLE_PUT_GEN(_namespace, _name, _stream) \
+int                                                         \
+console_##_name##_bin(uint8_t val)                          \
+{                                                           \
+    return _namespace::console_put_gen_byte(_stream, val);  \
+}                                                           \
+int                                                         \
+console_##_name##_bin(uint16_t val)                         \
+{                                                           \
+    return _namespace::console_put_gen_short(_stream, val); \
+}                                                           \
+int                                                         \
+console_##_name##_bin(uint32_t val)                         \
+{                                                           \
+    return _namespace::console_put_gen_long(_stream, val);  \
+}                                                           \
+int                                                         \
+console_##_name##_bin(uint64_t val)                         \
+{                                                           \
+    return _nemespace::console_put_gen_double(_stream, val);\
 }
-int
-console_out_bin(signed val);
-{
-    return console_out_bin((unsigned)val);
-}
-int
-console_out_bin(char val)
-{
-    cout << bitset<8>(val);
-    return 0;
-}
-extern int console_out_bin(short val);
-extern int console_out_bin(long long val);
-static int
-console_put_hex_gen_char(ostream stream, int val)
-{
-    stream << "0x" << setw(2) << setfill('0') << uppercase << hex << (unsigned char)val << endl;
-}
+CONSOLE_PUT_GEN(out_bin, out, cout)
+CONSOLE_PUT_GEN(out_bin, err, cerr)
+#undef
 

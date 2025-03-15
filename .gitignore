@@ -1,3 +1,7 @@
 # Folders with object and executable files
 bin
 obj
+# Dependments file
+first_app.depend
+# Layout file
+first_app.layout

@@ -67,16 +67,14 @@ enum class base_t
 // of integer values
 typedef class base
 {
-    private:
-        base_t  base_type;      // Enumeration
+     public:
+       base_t  base_type;      // Enumeration
                                 // base type
         int     base_type_i;    // Enumeration
                                 // base type index
-    public:
         // Constructor
         // arg[in] type Enumeration base type
         base(base_t type = BASE_DFLT);
-        base(void);
         // Get base type in the form of
         // base type enumeration class and
         // in the form of an integer value
@@ -113,11 +111,10 @@ typedef class scalar
 {
     private:
         scalar_t    scalar_type;    // Value type
-        base        scalar_base;    // Enumeration
+    public:
+       base         scalar_base;    // Enumeration
                                     // base type
                                     // for integers
-    public:
-        // Constructor
         //
         // arg[in] val_type     Scalar value
         //                      type, TYPE_LONG
@@ -167,7 +164,7 @@ extern int stream_get_str(stream_t stream,
 // arg[out] input   User input in string form
 //                  taken from 'cin' stream
 static inline int
-console_get_str(string &input)
+console_get_str(std::string &input)
 {
     return stream_get_str(stream_t::STREAM_STDIN, true, input);
 }
@@ -211,7 +208,7 @@ console_put_str_out(bool put_endl, const std::string &val)
 static inline int
 console_put_str_out(bool put_endl, const char *val)
 {
-    return stream_put_str(stream_t::STREAM_STDOUT, put_endl, val)
+    return stream_put_str(stream_t::STREAM_STDOUT, put_endl, val);
 }
 // To STDERR stream
 static inline int
@@ -222,7 +219,7 @@ console_put_str_err(bool put_endl, const std::string &val)
 static inline int
 console_put_str_err(bool put_endl, const char *val)
 {
-    return stream_put_str(stream_t::STREAM_STDERR, put_endl, val)
+    return stream_put_str(stream_t::STREAM_STDERR, put_endl, val);
 }
 
 // Log message to STDOUT with closing 'endl' sign
@@ -287,11 +284,11 @@ STREAM_GET_SCALAR(int64_t)
 //
 // return 0 - on success, -1 - on fault
 #define CONSOLE_GET_SCALAR(_val_type) \
-static inline int                                           \
-console_get_scalar(scalar &type, _val_type &val)            \
-{                                                           \
-    return stream_get_scalar_gen(stream_t::STREAM_STDIN,    \
-                                 type, base, val);          \
+static inline int                                       \
+console_get_scalar(scalar &type, _val_type &val)        \
+{                                                       \
+    return stream_get_scalar(stream_t::STREAM_STDIN,    \
+                                 type, val);            \
 }
 CONSOLE_GET_SCALAR(unsigned)
 CONSOLE_GET_SCALAR(signed)

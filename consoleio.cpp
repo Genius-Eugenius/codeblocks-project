@@ -74,7 +74,7 @@ base_name[] = {BASE_BIN_S, BASE_OCT_S, BASE_HEX_S, BASE_DEC_S};
 
 // Enumeration basis value
 static const int
-base_basis[] = {BASE_BIN_N, BASE_OCT_N, BASE_HEX_N, BASE_DEC_N);
+base_basis[] = {BASE_BIN_N, BASE_OCT_N, BASE_HEX_N, BASE_DEC_N};
 
 // Printable width of 'char' value in various base types
 static const size_t
@@ -102,8 +102,7 @@ base_w_double[] =
 //////////////////////////////////////////////////////
 
 // Constructor
-base::base(base_t type = BASE_DFLT) : base_type(type), base_type_i((int)type)
-base::base(void) : base_type(BASE_DFLT), base_type_i((int)BASE_DFLT)
+base::base(base_t type) : base_type(type), base_type_i((int)type) {}
 
 // Get base type
 base_t
@@ -152,14 +151,11 @@ BASE_GET_CONST(w_double)
 //////////////////////////////////////////////////////
 
 // Constructor
-scalar::scalar(scalar_t val_type = SCALAR_DFLT, \
-               base_t val_base = BASE_DFLT) : scalar_type(val_type)
-{
-    scalar_base.base(val_base);
-}
-scalar::scalar(void) : scalar_type(SCALAR_DFLT)
-{
-    scalar_base.base(BASE_DFLT);
+scalar::scalar(scalar_t val_type, \
+               base_t val_base) : scalar_type(val_type) \
+{                                                       \
+    scalar_base.base_type = val_base;                   \
+    scalar_base.base_type_i = (int)val_base;            \
 }
 
 // Get scalar value type
@@ -178,11 +174,10 @@ scalar::val_base(void)
 
 // Get enumeration base type index
 int
-scalar::val_base_i(void);
+scalar::val_base_i(void)
 {
     return scalar_base.type_i();
 }
-
 
 //////////////////////////////////////////////////////
 // Module global functions                          //
@@ -208,6 +203,20 @@ str_dec2signed(string &str, int &val)
 
     return 0;
 }
+static int
+str_dec2signed(string &str, int64_t &val)
+{
+    try
+    {
+        val = stoll(str);
+    }
+    catch (invalid_argument(str))
+    {
+        return -1;
+    }
+
+    return 0;
+}
 
 // Convert value from the string form to unsigned integer.
 // Octal, decimal and hexadecimal representations are supported.
@@ -222,7 +231,21 @@ str2unsigned(string &str, base &base, unsigned &val)
 {
     try
     {
-        val = stoul(str, nullptr, base::num()); stoul
+        val = stoul(str, nullptr, base.basis());
+    }
+    catch (invalid_argument(val))
+    {
+        return -1;
+    }
+
+    return 0;
+}
+static int
+str2unsigned(string &str, base &base, uint64_t &val)
+{
+    try
+    {
+        val = stoull(str, nullptr, base.basis());
     }
     catch (invalid_argument(val))
     {
@@ -243,16 +266,21 @@ console_get_base_unsigned(base &base, unsigned &val)
 {
     int rc;
     string input;
-    const char *base_str = base::name();
+    const char *base_str = base.name();
 
-    console_get_user_input(input);
+    console_get_str(input);
 
     if ((rc = str2unsigned(input, base, val)) != 0)
     {
         cerr
-                << __FUNCTION__ << "() ERROR: Failed to convert user input '"
-                << input << "' to the unsigned string value" << endl <<
-                " Enumeration base is " << base_str << endl;
+            << __FUNCTION__
+            << "() ERROR: Failed to convert user input '"
+            << input
+            << "' to the unsigned string value"
+            << endl
+            << " Enumeration base is "
+            << base_str
+            << endl;
     }
 
     return rc;
@@ -272,38 +300,40 @@ str2scalar(string &val_str, scalar &scal_type, signed &val)
     scalar_t    val_type = scal_type.val_type();
     base_t      val_base = scal_type.val_base();
 
-    if (val_type == scalar_t::TYPE_DOUBLE ||
-        val_type == scalar_t::TYPE_UDOUBLE)
+    if (val_type == scalar_t::TYPE_DOUBLE || val_type == scalar_t::TYPE_UDOUBLE)
     {
-        cerr << __FUNCTION__ "() 64-bit integers are not supported" << endl;
+        cerr << __FUNCTION__ << "() 64-bit integers are not supported" << endl;
         return -1;
     }
 
     if (val_base == base_t::BASE_DEC)
     {
-        if (val_type == scalar_t::TYPE_BYTE ||
-            val_type == scalar_t::TYPE_SHORT ||
-            val_type == scalar_t::TYPE_LONG))
+        if (val_type == scalar_t::TYPE_BYTE     ||
+            val_type == scalar_t::TYPE_SHORT    ||
+            val_type == scalar_t::TYPE_LONG)
         {
             rc = str_dec2signed(val_str, val);
         }
         else
         {
-            rc = str2unsigned(val_str, scal_type.base, val);
+            rc = str2unsigned(val_str, scal_type.scalar_base, (unsigned&)val);
         }
     }
     else
     {
-        if (val_type == scalar_t::TYPE_UBYTE ||
-            val_type == scalar_t::TYPE_USHORT ||
-            val_type == scalar_t::TYPE_ULONG))
+        if (val_type == scalar_t::TYPE_UBYTE    ||
+            val_type == scalar_t::TYPE_USHORT   ||
+            val_type == scalar_t::TYPE_ULONG)
         {
-            rc = str2unsigned(val_str, scal_type.base, val);
+            rc = str2unsigned(val_str, scal_type.scalar_base, (unsigned&)val);
         }
         else
         {
-            cerr << __FUNCTION__ << "() Signed integer values in non-decimal "
-                "base representation are not supported" << endl;
+            cerr
+                << __FUNCTION__
+                << "() Signed integer values in non-decimal "
+                   "base representation are not supported"
+                << endl;
         }
     }
 
@@ -319,7 +349,7 @@ str2scalar(string &val_str, scalar &scal_type, int64_t &val)
     if (val_type != scalar_t::TYPE_DOUBLE &&
         val_type != scalar_t::TYPE_UDOUBLE)
     {
-        cerr << __FUNCTION__ "() Only 64-bit integers are supported" << endl;
+        cerr << __FUNCTION__ << "() Only 64-bit integers are supported" << endl;
         return -1;
     }
 
@@ -328,18 +358,21 @@ str2scalar(string &val_str, scalar &scal_type, int64_t &val)
         if (val_type == scalar_t::TYPE_DOUBLE)
             rc = str_dec2signed(val_str, val);
         else
-            rc = str2unsigned(val_str, scal_type.base, val);
+            rc = str2unsigned(val_str, scal_type.scalar_base, (uint64_t&)val);
     }
     else
     {
         if (val_type == scalar_t::TYPE_UDOUBLE)
         {
-            rc = str2unsigned(val_str, scal_type.base, val);
+            rc = str2unsigned(val_str, scal_type.scalar_base, (uint64_t&)val);
         }
         else
         {
-            cerr << __FUNCTION__ << "() Signed integer values in non-decimal "
-                "base representation are not supported" << endl;
+            cerr
+                << __FUNCTION__
+                << "() Signed integer values in non-decimal "
+                   "base representation are not supported"
+                << endl;
         }
 
     }
@@ -355,25 +388,25 @@ namespace out_bin {
 static int
 console_put_gen_byte(ostream stream, uint8_t val)
 {
-    stream << setfill(FILL) << setw(BASE_2_W_CHAR) << bitset<8>(val);
+    stream << setfill(FILL) << setw(BASE_BIN_W_CHAR) << bitset<8>(val);
     return 0;
 }
 static int
 console_put_gen_short(ostream stream, uint16_t val)
 {
-    stream << setfill(FILL) << setw(BASE_2_W_SHORT) << bitset<16>(val);
+    stream << setfill(FILL) << setw(BASE_BIN_W_SHORT) << bitset<16>(val);
     return 0;
 }
 static int
 console_put_gen_long(ostream stream, uint32_t val)
 {
-    stream << setfill(FILL) << setw(BASE_2_W_LONG) << bitset<32>(val);
+    stream << setfill(FILL) << setw(BASE_BIN_W_LONG) << bitset<32>(val);
     return 0;
 }
 static int
 console_put_gen_double(ostream stream, uint64_t val)
 {
-    stream << setfill(FILL) << setw(BASE_2_W_DOUBLE) << bitset<64>(val);
+    stream << setfill(FILL) << setw(BASE_BIN_W_DOUBLE) << bitset<64>(val);
     return 0;
 }
 }
@@ -392,9 +425,11 @@ stream_get_str(stream_t stream, bool skip_eol, string &input)
 {
     if (stream != stream_t::STREAM_STDIN)
     {
-        cerr << __FUNCTION__
-            "() Stream type value of 'stream' argument "
-            "is not supported" << endl;
+        cerr
+            <<  __FUNCTION__
+            <<  "() Stream type value of 'stream' argument "
+                "is not supported"
+            << endl;
         return -1;
     }
 
@@ -413,7 +448,7 @@ stream_get_str(stream_t stream, bool skip_eol, char **input)
     do {
         if (input == NULL)
         {
-            cerr << __FUNCTION__ "() Value 'input' is NULL" << endl;
+            cerr << __FUNCTION__ << "() Value 'input' is NULL" << endl;
             break;
         }
 
@@ -422,7 +457,7 @@ stream_get_str(stream_t stream, bool skip_eol, char **input)
 
         if ((*input = new char[str.length() + 1]) == NULL)
         {
-            cerr << __FUNCTION__ "() Memory allocation fault" << endl;
+            cerr << __FUNCTION__ << "() Memory allocation fault" << endl;
             break;
         }
 
@@ -438,27 +473,27 @@ stream_get_str(stream_t stream, bool skip_eol, char **input)
 int
 stream_put_str(stream_t stream, bool put_endl, const string &val)
 {
-    ostream out_stream;
-
+#define PUT_ON_STREAM(_stream) \
+    if (put_endl)                   \
+        _stream << val << endl;     \
+    else                            \
+        _stream << val;             \
+    break;
     switch (stream)
     {
         case stream_t::STREAM_STDOUT:
-            out_stream = cout;
-            break;
+            PUT_ON_STREAM(cout)
         case stream_t::STREAM_STDERR:
-            out_stream = cerr;
-            break;
+            PUT_ON_STREAM(cerr)
         default:
-            cerr << __FUNCTION__
-                "() Stream type value of 'stream' argument "
-                "is not supported" << endl;
+            cerr
+                << __FUNCTION__
+                << "() Stream type value of 'stream' argument "
+                   "is not supported"
+                << endl;
             return -1;
     }
-
-    if (put_endl)
-        out_stream << val << endl;
-    else
-        out_stream << val;
+#undef PUT_ON_STREAM
 
     return 0;
 }
@@ -469,12 +504,12 @@ stream_put_str(stream_t stream, bool put_endl, const char *val)
 
     if (val == NULL)
     {
-        cerr << __FUNCTION__ "() Value 'val' is NULL" << endl;
+        cerr << __FUNCTION__ << "() Value 'val' is NULL" << endl;
         return -1;
     }
     if (strlen(val) == 0)
     {
-        cerr << __FUNCTION__ "() Argument 'val' is empty string" << endl;
+        cerr << __FUNCTION__ << "() Argument 'val' is empty string" << endl;
     }
 
     str = val;
@@ -496,37 +531,9 @@ stream_get_scalar(stream_t stream, scalar &type, _val_type &val)    \
     if (stream_get_str(stream, true, input) != 0)                   \
         return -1;                                                  \
                                                                     \
-    return str2salar(input, type, val);                             \
+    return str2scalar(input, type, val);                            \
 }
 STREAM_GET_SCALAR(signed)
 STREAM_GET_SCALAR(int64_t)
 #undef STREAM_GET_SCALAR
-
-// Functions to put scalar integer values onto console.
-//
-// See definition in consoleio.h
-#define CONSOLE_PUT_GEN(_namespace, _name, _stream) \
-int                                                         \
-console_##_name##_bin(uint8_t val)                          \
-{                                                           \
-    return _namespace::console_put_gen_byte(_stream, val);  \
-}                                                           \
-int                                                         \
-console_##_name##_bin(uint16_t val)                         \
-{                                                           \
-    return _namespace::console_put_gen_short(_stream, val); \
-}                                                           \
-int                                                         \
-console_##_name##_bin(uint32_t val)                         \
-{                                                           \
-    return _namespace::console_put_gen_long(_stream, val);  \
-}                                                           \
-int                                                         \
-console_##_name##_bin(uint64_t val)                         \
-{                                                           \
-    return _nemespace::console_put_gen_double(_stream, val);\
-}
-CONSOLE_PUT_GEN(out_bin, out, cout)
-CONSOLE_PUT_GEN(out_bin, err, cerr)
-#undef
 

@@ -77,22 +77,22 @@ static const int
 base_basis[] = {BASE_BIN_N, BASE_OCT_N, BASE_HEX_N, BASE_DEC_N};
 
 // Printable width of 'char' value in various base types
-static const size_t
+static const int
 base_w_char[] =
     {BASE_BIN_W_CHAR, BASE_OCT_W_CHAR, BASE_HEX_W_CHAR, BASE_DEC_W_CHAR};
 
 // Printable width of 'short' value in various base types
-static const size_t
+static const int
 base_w_short[] =
     {BASE_BIN_W_SHORT, BASE_OCT_W_SHORT, BASE_HEX_W_SHORT, BASE_DEC_W_SHORT};
 
 // Printable width of 'long' value in various base types
-static const size_t
+static const int
 base_w_long[] =
     {BASE_BIN_W_LONG, BASE_OCT_W_LONG, BASE_HEX_W_LONG, BASE_DEC_W_LONG};
 
 // Printable width of 'long long' value in various base types
-static const size_t
+static const int
 base_w_double[] =
     {BASE_BIN_W_DOUBLE, BASE_OCT_W_DOUBLE, BASE_HEX_W_DOUBLE, BASE_DEC_W_DOUBLE};
 
@@ -125,20 +125,14 @@ base::name(void)
     return base_name[base_type_i];
 }
 
-// Get basis value
-int
-base::basis(void)
-{
-    return base_basis[base_type_i];
-}
-
 // Get constants
 #define BASE_GET_CONST(_field) \
-size_t                                  \
+int                                     \
 base::_field(void)                      \
 {                                       \
     return base_##_field[base_type_i];  \
 }
+BASE_GET_CONST(basis)
 BASE_GET_CONST(w_char)
 BASE_GET_CONST(w_short)
 BASE_GET_CONST(w_long)
@@ -183,232 +177,380 @@ scalar::val_base_i(void)
 // Module global functions                          //
 //////////////////////////////////////////////////////
 
-// Convert value from the string decimal form to signed integer.
-//
-// arg[in] str  String representation
-// arg[out] val Numeric representation
-//
-// return Status, 0 - success, -1 - fault
-static int
-str_dec2signed(string &str, int &val)
-{
-    try
-    {
-        val = stoi(str);
-    }
-    catch (invalid_argument(str))
-    {
-        return -1;
-    }
-
-    return 0;
-}
-static int
-str_dec2signed(string &str, int64_t &val)
-{
-    try
-    {
-        val = stoll(str);
-    }
-    catch (invalid_argument(str))
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-// Convert value from the string form to unsigned integer.
+// Convert value from the string form to integer.
 // Octal, decimal and hexadecimal representations are supported.
+// Signed and unsigned types are supported.
 //
 // arg[in]  str     String representation
 // arg[in]  base    Enumeration base type object
-// arg[out] val     Numeric representation
 //
-// return Status, 0 - success, -1 - fault
-static int
-str2unsigned(string &str, base &base, unsigned &val)
+// return:
+// On success - pointer to the returned integer value, must be cast
+// to the type (long long *) for all 64-bit integer types
+// and to (long *) for all other integer types,
+// On fault - NULL pointer.
+static void*
+str2int(string &str, scalar &type)
 {
+    static long         val_l;
+    static long long    val_ll;
+    scalar_t            val_type = type.val_type();
+    base_t              val_base = type.val_base();
+    const char         *base_name = type.base.name();
+    const char         *val_type_name;
+    void               *retval = 0;
+
     try
     {
-        val = stoul(str, nullptr, base.basis());
+        switch (val_type)
+        {
+            case scalar_t::TYPE_BYTE:
+            case scalar_t::TYPE_SHORT:
+            case scalar_t::TYPE_LONG:
+                val_l = stol(str, nullptr, val_base);
+                val_type_name = "long";
+                retval = &val_l;
+                break;
+            case scalar_t::TYPE_UBYTE:
+            case scalar_t::TYPE_USHORT:
+            case scalar_t::TYPE_ULONG:
+                val_l = (long)stoul(str, nullptr, val_base);
+                val_type_name = "unsigned long";
+                retval = &val_l;
+                break;
+            case scalar_t::TYPE_DOUBLE:
+                val_ll = stoll(str, nullptr, val_base);
+                val_type_name = "long long";
+                retval = &val_ll;
+                break;
+            case scalar_t::TYPE_UDOUBLE:
+                val_ll = (long long)stoull(str, nullptr, val_base);
+                val_type_name = "unsigned long long";
+                retval = &val_ll;
+                break;
+            default:
+                cerr << __FUNCTION__ << "() Scalar type is invalid." << endl;
+                return 0;
+        }
     }
     catch (invalid_argument(val))
     {
-        return -1;
+        retval = 0;
     }
 
-    return 0;
-}
-static int
-str2unsigned(string &str, base &base, uint64_t &val)
-{
-    try
-    {
-        val = stoull(str, nullptr, base.basis());
-    }
-    catch (invalid_argument(val))
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-// Get unsigned integer value from user input.
-//
-// arg[in]  base    Enumeration base structure
-// arg[out] val     Returned integer value
-//
-// return Status, 0 - success, -1 - fault
-static int
-console_get_base_unsigned(base &base, unsigned &val)
-{
-    int rc;
-    string input;
-    const char *base_str = base.name();
-
-    console_get_str(input);
-
-    if ((rc = str2unsigned(input, base, val)) != 0)
+    if (retval == 0)
     {
         cerr
-            << __FUNCTION__
-            << "() ERROR: Failed to convert user input '"
-            << input
-            << "' to the unsigned string value"
-            << endl
-            << " Enumeration base is "
-            << base_str
-            << endl;
+            << __FUNCTION__  <<
+            << "() ERROR: Failed to convert string input '" << endl
+            << input << endl << "' to the integer value type '"
+            << val_type_name << "', enumeration base is '"
+            << base_str << "'." << endl;
     }
 
-    return rc;
+    return retval;
 }
 
-// Generic function to get scalar values from strings
+// Get integer value from user STDIN input.
 //
-// arg[in]  val_str     String representation of scalar value
-// arg[in]  scal_type   Scalar type of the value
-// arg[out] val         Returned scalar value
+// arg[in] type     Integer value type and enumeration base
 //
-// return Status, 0 - on success, -1 on fault
-static int
-str2scalar(string &val_str, scalar &scal_type, signed &val)
+// return:
+// On success - pointer to the returned integer value, must be cast
+// to the type (long long *) for all 64-bit integer types
+// and to (long *) for all other integer types,
+// On fault - NULL pointer.
+static void*
+console_get_int(scalar &type)
 {
-    int         rc = -1;
-    scalar_t    val_type = scal_type.val_type();
-    base_t      val_base = scal_type.val_base();
+    void       *retval = 0;
+    string      input;
 
-    if (val_type == scalar_t::TYPE_DOUBLE || val_type == scalar_t::TYPE_UDOUBLE)
-    {
-        cerr << __FUNCTION__ << "() 64-bit integers are not supported" << endl;
-        return -1;
-    }
+    if (console_get_str(input) != 0)
+        retval = str2int(input, type);
 
-    if (val_base == base_t::BASE_DEC)
-    {
-        if (val_type == scalar_t::TYPE_BYTE     ||
-            val_type == scalar_t::TYPE_SHORT    ||
-            val_type == scalar_t::TYPE_LONG)
-        {
-            rc = str_dec2signed(val_str, val);
-        }
-        else
-        {
-            rc = str2unsigned(val_str, scal_type.scalar_base, (unsigned&)val);
-        }
-    }
-    else
-    {
-        if (val_type == scalar_t::TYPE_UBYTE    ||
-            val_type == scalar_t::TYPE_USHORT   ||
-            val_type == scalar_t::TYPE_ULONG)
-        {
-            rc = str2unsigned(val_str, scal_type.scalar_base, (unsigned&)val);
-        }
-        else
-        {
-            cerr
-                << __FUNCTION__
-                << "() Signed integer values in non-decimal "
-                   "base representation are not supported"
-                << endl;
-        }
-    }
-
-    return rc;
-}
-static int
-str2scalar(string &val_str, scalar &scal_type, int64_t &val)
-{
-    int         rc = -1;
-    scalar_t    val_type = scal_type.val_type();
-    base_t      val_base = scal_type.val_base();
-
-    if (val_type != scalar_t::TYPE_DOUBLE &&
-        val_type != scalar_t::TYPE_UDOUBLE)
-    {
-        cerr << __FUNCTION__ << "() Only 64-bit integers are supported" << endl;
-        return -1;
-    }
-
-    if (val_base == base_t::BASE_DEC)
-    {
-        if (val_type == scalar_t::TYPE_DOUBLE)
-            rc = str_dec2signed(val_str, val);
-        else
-            rc = str2unsigned(val_str, scal_type.scalar_base, (uint64_t&)val);
-    }
-    else
-    {
-        if (val_type == scalar_t::TYPE_UDOUBLE)
-        {
-            rc = str2unsigned(val_str, scal_type.scalar_base, (uint64_t&)val);
-        }
-        else
-        {
-            cerr
-                << __FUNCTION__
-                << "() Signed integer values in non-decimal "
-                   "base representation are not supported"
-                << endl;
-        }
-
-    }
+    return retval;
 }
 
-// Put integer value onto generic output stream
+// Namespace for binary output functions
+namespace bin_out {
+// Put integer value onto generic output in binary format.
 //
-// arg[in] stream   Output etream, cout or cerr
+// arg[in] stream   Output stream, STDOUT or STDERR
 // arg[in] val      Value to put to stream in binary form
 //
 // return Status, 0 - success, -1 - fault
-namespace out_bin {
 static int
-console_put_gen_byte(ostream stream, uint8_t val)
+stream_put_int(ostream stream, uint8_t val)
 {
-    stream << setfill(FILL) << setw(BASE_BIN_W_CHAR) << bitset<8>(val);
     return 0;
 }
 static int
-console_put_gen_short(ostream stream, uint16_t val)
+stream_put_int(ostream stream, uint16_t val)
 {
     stream << setfill(FILL) << setw(BASE_BIN_W_SHORT) << bitset<16>(val);
     return 0;
 }
 static int
-console_put_gen_long(ostream stream, uint32_t val)
+stream_put_int(ostream stream, uint32_t val)
 {
     stream << setfill(FILL) << setw(BASE_BIN_W_LONG) << bitset<32>(val);
     return 0;
 }
 static int
-console_put_gen_double(ostream stream, uint64_t val)
+stream_put_int(ostream stream, uint64_t val)
 {
     stream << setfill(FILL) << setw(BASE_BIN_W_DOUBLE) << bitset<64>(val);
     return 0;
 }
+// Put integer value onto generic output in binary format.
+//
+// arg[in] stream   Output stream, STDOUT or STDERR
+// arg[in] type     Integer value type
+// arg[in] val_ptr  Pointer to inter value
+//
+// return Status, 0 - success, -1 - fault
+static int
+stream_put_int_gen(ostream stream, scalar &type, void *val_ptr)
+{
+    scalar_t    val_type = type.val_type();
+    base_t      val_base = type.val_base();
+    int         p_width;
+
+    if (val_base != base_t::BASE_BIN)
+    {
+        cerr
+            << __FUNCTION__ << "() "
+            << "enumeration base is not supported." << endl;
+        return -1;
+    }
+
+    switch (val_type)
+    {
+        case scalar_t::TYPE_BYTE:
+        case scalar_t::TYPE_UBYTE:
+            p_width = type.scalar_base.w_char();
+            stream << setfill(FILL) << setw(p_width) << bitset<8>(*((uint8_t *)val_ptr));
+            return 0;
+        case scalar_t::TYPE_SHORT:
+        case scalar_t::TYPE_USHORT:
+            p_width = type.scalar_base.w_short();
+            stream << setfill(FILL) << setw(p_width) << bitset<16>(*((uint16_t *)val_ptr));
+            return 0;
+        case scalar_t::TYPE_LONG:
+        case scalar_t::TYPE_ULONG:
+            p_width = type.scalar_base.w_long();
+            stream << setfill(FILL) << setw(p_width) << bitset<32>(*((uint32_t *)val_ptr));
+            return 0;
+        case scalar_t::TYPE_DOUBLE:
+        case scalar_t::TYPE_UDOUBLE:
+            p_width = type.scalar_base.w_double();
+            stream << setfill(FILL) << setw(p_width) << bitset<64>(*((uint64_t *)val_ptr));
+            return 0;
+        default:
+            cerr << __FUNCTION__ << "() Value type is invalid"
+    }
+
+    return -1;
+}
+}
+
+// Namespace for printout in octal format
+namespace oct_out {
+// Put integer value onto generic output in octal format.
+//
+// arg[in] stream   Output stream, STDOUT or STDERR
+// arg[in] type     Integer value type
+// arg[in] val_ptr  Pointer to inter value
+//
+// return Status, 0 - success, -1 - fault
+static int
+stream_put_int_gen(ostream stream, scalar &type, void *val_ptr)
+{
+    uint8_t     val_c = *((uint8_t *)val_ptr);
+    uint16_t    val_s = *((uint16_t *)val_ptr);
+    uint32_t    val_l = *((uint32_t *)val_ptr);
+    uint64_t    val_d = *((uint64_t *)val_ptr);
+    scalar_t    val_type = type.val_type();
+    base_t      val_base = type.val_base();
+    int         p_width;
+
+    if (val_base != base_t::BASE_OCT)
+    {
+        cerr << __FUNCTION__ << "() Enumeration base is invalid." << endl;
+        return -1;
+    }
+
+    switch (val_type)
+    {
+        case scalar_t::TYPE_BYTE:
+        case scalar_t::TYPE_UBYTE:
+            p_width = type.scalar_base.w_char();
+            stream << oct << setfill(FILL) << setw(p_width) << val_c;
+            return 0;
+        case scalar_t::TYPE_SHORT:
+        case scalar_t::TYPE_USHORT:
+            p_width = type.scalar_base.w_short();
+            stream << oct << setfill(FILL) << setw(p_width) << val_s;
+            return 0;
+        case scalar_t::TYPE_LONG:
+        case scalar_t::TYPE_ULONG:
+            p_width = type.scalar_base.w_long();
+            stream << oct << setfill(FILL) << setw(p_width) << val_l;
+            return 0;
+        case scalar_t::TYPE_DOUBLE:
+        case scalar_t::TYPE_UDOUBLE:
+            p_width = type.scalar_base.w_double();
+            stream << oct << setfill(FILL) << setw(p_width) << val_l;
+            return 0;
+        default:
+            cerr << __FUNCTION__ << "() Value type is invalid"
+    }
+
+    return -1;
+}
+}
+
+// Namespace for printout in hexadecimal format.
+namespace oct_out {
+// Put integer value onto generic output in hexadecimal format.
+//
+// arg[in] stream   Output stream, STDOUT or STDERR
+// arg[in] type     Integer value type
+// arg[in] val_ptr  Pointer to inter value
+//
+// return 0 - success, -1 - fault
+static int
+stream_put_int_gen(ostream stream, scalar &type, void *val_ptr)
+{
+    uint8_t     val_c = *((uint8_t *)val_ptr);
+    uint16_t    val_s = *((uint16_t *)val_ptr);
+    uint32_t    val_l = *((uint32_t *)val_ptr);
+    uint64_t    val_d = *((uint64_t *)val_ptr);
+    scalar_t    val_type = type.val_type();
+    base_t      val_base = type.val_base();
+    int         p_width;
+
+    if (val_base != base_t::BASE_HEX)
+    {
+        cerr << __FUNCTION__ << "() Enumeration base is invalid." << endl;
+        return -1;
+    }
+
+    switch (val_type)
+    {
+        case scalar_t::TYPE_BYTE:
+        case scalar_t::TYPE_UBYTE:
+            p_width = type.scalar_base.w_char();
+            stream << hex << setfill(FILL) << setw(p_width) << val_c;
+            return 0;
+        case scalar_t::TYPE_SHORT:
+        case scalar_t::TYPE_USHORT:
+            p_width = type.scalar_base.w_short();
+            stream << hex << setfill(FILL) << setw(p_width) << val_s;
+            return 0;
+        case scalar_t::TYPE_LONG:
+        case scalar_t::TYPE_ULONG:
+            p_width = type.scalar_base.w_long();
+            stream << hex << setfill(FILL) << setw(p_width) << val_l;
+            return 0;
+        case scalar_t::TYPE_DOUBLE:
+        case scalar_t::TYPE_UDOUBLE:
+            p_width = type.scalar_base.w_double();
+            stream << hex << setfill(FILL) << setw(p_width) << val_l;
+            return 0;
+        default:
+            cerr << __FUNCTION__ << "() Value type is invalid"
+    }
+
+    return -1;
+}
+}
+
+// Put integer value onto generic output.
+// Output format depends on specified binary type.
+//
+// arg[in] stream   Output etream, STDOUT or STDERR
+// arg[in] type     Integer value type and enumeration base
+// arg[in] val_ptr  Pointer to location of integer value
+//
+// return: 0 - success, -1 - fault
+int
+stream_put_int_gen(ostream stream, scalar &type, void *val_ptr)
+{
+    long        val_l;
+    long long   val_ll;
+    scalar_t    val_type = type.val_type();
+    base_t      val_base = type.val_base();
+
+    if (val_ptr == 0)
+    {
+        cerr << __FUNCTION__ << "() argument 'val_ptr' is NULL" << endl;
+        return -1;
+    }
+
+    switch (val_base)
+    {
+        case base_t::BASE_BIN:
+            return bin_out::stream_put_int_gen(stream, type, val_ptr);
+        case base_t::BASE_OCT:
+            return oct_out::stream_put_int_gen(stream, type, val_ptr);
+        case base_t::BASE_HEX:
+            return hex_out::stream_put_int_gen(stream, type, val_ptr);
+        case base_t::BASE_DEC:
+            break;
+        default:
+            cerr
+                << __FUNCTION__ << "() Enumeration base is invalid." << endl;
+            return -1;
+    }
+
+    // Decimal value type is here
+    switch (val_type) {
+        case scalar_t::TYPE_BYTE:
+        case scalar_t::TYPE_UBYTE:
+            val_l = (long)(*((uint8_t *)val_ptr));
+            break;
+        case scalar_t::TYPE_SHORT:
+        case scalar_t::TYPE_USHORT:
+            val_l = (long)(*((uint16_t *)val_ptr));
+            break;
+        case scalar_t::TYPE_LONG:
+        case scalar_t::TYPE_ULONG:
+            val_l = (long)(*((uint32_t *)val_ptr));
+            break;
+        case scalar_t::TYPE_DOUBLE:
+        case scalar_t::TYPE_UDOUBLE:
+            val_l = (long)(*((uint64_t *)val_ptr));
+            break;
+        default:
+            cerr
+                << __FUNCTION__ << "() "
+                << "Integer value type is invalid." << endl;
+            return -1;
+    }
+
+    switch (val_type) {
+        case scalar_t::TYPE_BYTE:
+        case scalar_t::TYPE_SHORT:
+        case scalar_t::TYPE_LONG:
+            stream << val_l;
+            break;
+        case scalar_t::TYPE_UBYTE:
+        case scalar_t::TYPE_USHORT:
+        case scalar_t::TYPE_ULONG:
+            stream << (unsigned long)val_l;
+            break;
+        case scalar_t::TYPE_DOUBLE:
+            stream << val_ll;
+            break;
+        case scalar_t::TYPE_UDOUBLE:
+            stream << (unsigned long long)val_ll;
+            break;
+        default:;
+    }
+
+    return 0;
 }
 
 //////////////////////////////////////////////////////

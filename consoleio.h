@@ -86,10 +86,10 @@ typedef class base
         int         basis(void);
         // Get value printable width in characters
         // for various types of integer value
-        size_t      w_char(void);
-        size_t      w_short(void);
-        size_t      w_long(void);
-        size_t      w_double(void);
+        int         w_char(void);
+        int         w_short(void);
+        int         w_long(void);
+        int         w_double(void);
 } base;
 
 // Scalar value type for string representation
@@ -171,8 +171,7 @@ console_get_str(std::string &input)
 static inline int
 console_get_str(char **input)
 {
-    std::string val;
-    return stream_get_str(stream_t::STREAM_STDIN, true, val);
+    return stream_get_str(stream_t::STREAM_STDIN, true, **input);
 }
 
 //////////////////////////////////////////////////////

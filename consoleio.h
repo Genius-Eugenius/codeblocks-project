@@ -12,13 +12,11 @@
 // Global library defines                                   //
 //////////////////////////////////////////////////////////////
 
-// Default prefix string values
-// for string representation of integer values
-// in various enumeration base types
-#define PREFIX_STR_BIN "d"      // Binary
-#define PREFIX_STR_OCT "o"      // Octal
-#define PREFIX_STR_HEX "0x"     // Hexadecimal
-// No printable prefix for decimal representation
+// Enumeration base names in string form
+#define BASE_BIN_S "binary"
+#define BASE_OCT_S "octal"
+#define BASE_HEX_S "hexadecimal"
+#define BASE_DEC_S "decimal"
 
 // Default enumeration base type - decimal
 #define BASE_DFLT   base_t::BASE_DEC
@@ -29,17 +27,15 @@
 // Default value type for scalar value, 'long' integer
 #define SCALAR_DFLT scalar_t::TYPE_LONG
 
+// I/0 streams and default stream
+#define STDIN       stream_t::STREAM_STDIN
+#define STDOUT      stream_t::STREAM_STDOUT
+#define STDERR      stream_t::STREAM_STDERR
+#define STREAM_DFLT STDIN
+
 //////////////////////////////////////////////////////////////
 // Global library data types                                //
 //////////////////////////////////////////////////////////////
-
-// I/O stream type
-enum class stream_t
-{
-    STREAM_STDIN = 0,   // STDIN
-    STREAM_STDOUT,      // STDOUT
-    STREAM_STDERR,      // STDERR
-};
 
 // Representation type for integer values
 // in stream output operations.
@@ -61,25 +57,34 @@ enum class base_t
     BASE_OCT,       // Octal
     BASE_HEX,       // Hexadecimal
     BASE_DEC,       // Decimal
+    BASE_INVAL,
 };
 
 // Class to represent enumeration base types
 // of integer values
 typedef class base
 {
-     public:
-       base_t  base_type;      // Enumeration
+    private:
+        base_t  base_type;      // Enumeration
                                 // base type
         int     base_type_i;    // Enumeration
                                 // base type index
+    public:
         // Constructor
         // arg[in] type Enumeration base type
-        base(base_t type = BASE_DFLT);
+        base(base_t type = BASE_DFLT) : \
+            base_type(type), base_type_i((int)type) {};
         // Get base type in the form of
         // base type enumeration class and
         // in the form of an integer value
-        base_t      type(void);
-        int         type_i(void);
+        base_t      type(void)
+        {
+            return base_type;
+        }
+        int         type_i(void)
+        {
+            return base_type_i;
+        }
         // Get get enumeration base type name
         const char *name(void);
         // Get enumeration basis value
@@ -90,6 +95,12 @@ typedef class base
         int         w_short(void);
         int         w_long(void);
         int         w_double(void);
+        // Assignment operators
+        base_t operator=(const base &val);
+        base_t operator=(base_t val);
+        base_t operator=(int val);
+        base_t operator=(const char *val);
+        base_t operator=(const std::string &val);
 } base;
 
 // Scalar value type for string representation
@@ -104,28 +115,21 @@ enum class scalar_t
     TYPE_ULONG,     // unsigned, unsigned int, uint32_t
     TYPE_DOUBLE,    // long long, int64_t
     TYPE_UDOUBLE,   // long long, uint64_t
+    TYPE_INVAL,
 };
 
 // Class to represent scalar values
 typedef class scalar
 {
     private:
+        uint64_t    scalar_val;     // Scalar value
         scalar_t    scalar_type;    // Value type
     public:
-       base         scalar_base;    // Enumeration
-                                    // base type
-                                    // for integers
+        base        enum_base;      // Enumeration base
         //
         // arg[in] val_type     Scalar value
-        //                      type, TYPE_LONG
-        //                      on default
-        // srg[in] val_base     Enumeration
-        //                      base type,
-        //                      BASE_DEC
-        //                      on default
-        scalar(scalar_t val_type = SCALAR_DFLT,
-               base_t val_base = BASE_DFLT);
-        scalar(void);
+        scalar(scalar_t val_type = SCALAR_DFLT) : \
+               scalar_val(0), scalar_type(val_type) {};
         // Get scalar value type
         scalar_t    val_type(void);
         // Get enumeration base type
@@ -133,6 +137,45 @@ typedef class scalar
         // Get enumeration base type index
         int         val_base_i(void);
 } scalar;
+
+// I/O stream type
+enum class stream_t
+{
+    STREAM_STDIN = 0,   // STDIN
+    STREAM_STDOUT,      // STDOUT
+    STREAM_STDERR,      // STDERR
+    STREAM_INVAL,
+};
+
+// Class to represent I/O stream
+typedef class stream {
+    private:
+        stream_t stream_type;
+    public:
+        // Constructor
+        void        stream(stream_t type = STREAM_DFLT) : \
+                           stream_type(type) {}
+        // Assignment operator
+        stream_t    operator=(const stream_t type);
+        // Data output operator
+        //
+        // Put data of various types onto output stream
+        // (with stream_type == STOUT || stream_type == STDERR).
+        //
+        // stream << scalar
+        // stream << string
+        // stream << charstring
+        scalar         &operator<<(const scalar &val);
+        std::string    &operator<<(const std::string &val);
+        const char      operator<<(const char *val);
+        // Data input operator
+        //
+        // Get data of various types from input stream
+        // (with stream_type == STDIN).
+        int             operator>>(scalar &val);
+        int             operator>>(std::string &val);
+        int             operator>>(char &*val);
+}
 
 //////////////////////////////////////////////////////////////
 // Functions to get vector and scalar values                //

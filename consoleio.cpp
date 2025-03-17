@@ -18,11 +18,13 @@ using namespace std;
 // of integer values
 #define FILL '0'
 
-// Base names in string form
-#define BASE_BIN_S "binary"
-#define BASE_OCT_S "octal"
-#define BASE_HEX_S "hexadecimal"
-#define BASE_DEC_S "decimal"
+// Default prefix string values
+// for string representation of integer values
+// in various enumeration base types
+#define PREFIX_STR_BIN "d"      // Binary
+#define PREFIX_STR_OCT "o"      // Octal
+#define PREFIX_STR_HEX "0x"     // Hexadecimal
+// No printable prefix for decimal representation
 
 //////////////////////////////////////////////////////
 // Module global data types                         //
@@ -101,21 +103,35 @@ base_w_double[] =
 // see definitions in consoleio.h                   //
 //////////////////////////////////////////////////////
 
-// Constructor
-base::base(base_t type) : base_type(type), base_type_i((int)type) {}
-
-// Get base type
-base_t
-base::type(void)
+// Return enumeration base type corresponding
+// given base type name
+static base_t
+base_str2type(const char *strtype)
 {
-    return base_type;
-}
+    base_t rc = base_t::BASE_INVAL;
 
-// Get base type index
-int
-base::type_i(void)
-{
-    return base_type_i;
+    if (val == 0)
+    {
+        cerr
+            << __FUNCTION__ << "() Base type value is NULL." << endl;
+        return rc;
+    }
+
+    if (strcmp(val, BASE_BIN_S) == 0)
+        rc = base_t::BASE_BIN;
+    else if (strcmp(val, BASE_OCT_S) == 0)
+        rc = base_t::BASE_OCT;
+    else if (strcmp(val, BASE_HEX_S) == 0)
+        rc = base_t::BASE_HEX;
+    else if (strcmp(val, BASE_DEC_S) == 0)
+        rc = base_t::BASE_DEC;
+    else
+    {
+        cerr
+            << __FUNCTION__ << "() Base type is invalid." << endl;
+    }
+
+    return rc;
 }
 
 // Get base name
@@ -128,7 +144,7 @@ base::name(void)
 // Get constants
 #define BASE_GET_CONST(_field) \
 int                                     \
-base::_field(void)                      \
+base::_field(vvaloid)                      \
 {                                       \
     return base_##_field[base_type_i];  \
 }
@@ -138,6 +154,73 @@ BASE_GET_CONST(w_short)
 BASE_GET_CONST(w_long)
 BASE_GET_CONST(w_double)
 #undef BASE_GET_CONST()
+
+// Class base operators
+// Assignment operator
+base_t
+operator=(const base &val)
+{
+    base_type = val.type();
+    base_type_i = (int)base_type;
+    return base_type;
+}
+base_t
+operator=(base_t val)
+{
+    if ((int)val < 0 || (int)val >= (int)(base_t::BASE_INVAL))
+    {
+        cerr
+            << __FUNCTION__ << "() Base type value is invalid." << endl;
+        return base_t::BASE_INVAL;
+    }
+
+    base_type = val;
+    base_type_i = (int)val;
+
+    return base_type;
+}
+base_t
+operator=(int val)
+{
+    if (val < 0 || val >= (int)(base_t::BASE_INVAL))
+    {
+        cerr
+            << __FUNCTION__ << "() Base type value is invalid." << endl;
+        return base_t::BASE_INVAL;
+    }
+
+    base_type = (base_t)val;
+    base_type_i = val;
+
+    return base_type;
+}
+base_t
+operator=(const char *val)
+{
+    base_t rc = base_str2type(val);
+
+    if ((int)rc >= 0 && (int)rc < (int)(base_t::BASE_INVAL))
+    {
+        base_type = rc;
+        base_type_i = (int)rc;
+    }
+
+    return base_type;
+}
+base_t
+operator=(const std::string &val)
+{
+    const char *charstr = val.c_str();
+    base_t rc = base_str2type(charstr);
+
+    if ((int)rc >= 0 && (int)rc < (int)(base_t::BASE_INVAL))
+    {
+        base_type = rc;
+        base_type_i = (int)rc;
+    }
+
+    return base_type;
+}
 
 //////////////////////////////////////////////////////
 // Class 'scalar' methods,                          //
@@ -274,35 +357,6 @@ console_get_int(scalar &type)
 
 // Namespace for binary output functions
 namespace bin_out {
-// Put integer value onto generic output in binary format.
-//
-// arg[in] stream   Output stream, STDOUT or STDERR
-// arg[in] val      Value to put to stream in binary form
-//
-// return Status, 0 - success, -1 - fault
-static int
-stream_put_int(ostream stream, uint8_t val)
-{
-    return 0;
-}
-static int
-stream_put_int(ostream stream, uint16_t val)
-{
-    stream << setfill(FILL) << setw(BASE_BIN_W_SHORT) << bitset<16>(val);
-    return 0;
-}
-static int
-stream_put_int(ostream stream, uint32_t val)
-{
-    stream << setfill(FILL) << setw(BASE_BIN_W_LONG) << bitset<32>(val);
-    return 0;
-}
-static int
-stream_put_int(ostream stream, uint64_t val)
-{
-    stream << setfill(FILL) << setw(BASE_BIN_W_DOUBLE) << bitset<64>(val);
-    return 0;
-}
 // Put integer value onto generic output in binary format.
 //
 // arg[in] stream   Output stream, STDOUT or STDERR

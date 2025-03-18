@@ -77,11 +77,13 @@ typedef class base
         // Get base type in the form of
         // base type enumeration class and
         // in the form of an integer value
-        base_t      type(void)
+        base_t
+        type(void)
         {
             return base_type;
         }
-        int         type_i(void)
+        int
+        type_i(void)
         {
             return base_type_i;
         }
@@ -96,7 +98,7 @@ typedef class base
         int         w_long(void);
         int         w_double(void);
         // Assignment operators
-        base_t operator=(const base &val);
+        base_t operator=(base &val);
         base_t operator=(base_t val);
         base_t operator=(int val);
         base_t operator=(const char *val);
@@ -128,8 +130,8 @@ typedef class scalar
         base        enum_base;      // Enumeration base
         //
         // arg[in] val_type     Scalar value
-        scalar(scalar_t val_type = SCALAR_DFLT) : \
-               scalar_val(0), scalar_type(val_type) {};
+        scalar(scalar_t val_type = SCALAR_DFLT,
+               base_t val_base = BASE_DFLT);
         // Get scalar value type
         scalar_t    val_type(void);
         // Get enumeration base type
@@ -149,33 +151,33 @@ enum class stream_t
 
 // Class to represent I/O stream
 typedef class stream {
-    private:
-        stream_t stream_type;
-    public:
-        // Constructor
-        void        stream(stream_t type = STREAM_DFLT) : \
-                           stream_type(type) {}
-        // Assignment operator
-        stream_t    operator=(const stream_t type);
-        // Data output operator
-        //
-        // Put data of various types onto output stream
-        // (with stream_type == STOUT || stream_type == STDERR).
-        //
-        // stream << scalar
-        // stream << string
-        // stream << charstring
-        scalar         &operator<<(const scalar &val);
-        std::string    &operator<<(const std::string &val);
-        const char      operator<<(const char *val);
-        // Data input operator
-        //
-        // Get data of various types from input stream
-        // (with stream_type == STDIN).
-        int             operator>>(scalar &val);
-        int             operator>>(std::string &val);
-        int             operator>>(char &*val);
-}
+private:
+    stream_t stream_type;
+public:
+    // Constructor
+    stream(stream_t type = STREAM_DFLT) : \
+        stream_type(type) {};
+    // Assignment operator
+    stream_t    operator=(const stream_t type);
+    // Data output operator
+    //
+    // Put data of various types onto output stream
+    // (with stream_type == STOUT || stream_type == STDERR).
+    //
+    // stream << scalar
+    // stream << string
+    // stream << charstring
+    scalar& operator<<(const scalar& val);
+    std::string& operator<<(const std::string& val);
+    const char      operator<<(const char* val);
+    // Data input operator
+    //
+    // Get data of various types from input stream
+    // (with stream_type == STDIN).
+    int             operator>>(scalar& val);
+    int             operator>>(std::string& val);
+    int             operator>>(char** val);
+} stream;
 
 //////////////////////////////////////////////////////////////
 // Functions to get vector and scalar values                //
@@ -189,17 +191,14 @@ typedef class stream {
 // Generic function to get string value from
 // input stream with possible trimming final CR/EOL sequence
 //
-// arg[in]  stream      Stream type
 // arg[in]  trim_eol    Trim CR/EOL at the end of input string
 // arg[out] input       User input in string form taken from
 //                      input stream
 //
 // return 0 - on success, -1 -on fault
-extern int stream_get_str(stream_t stream,
-                            bool skip_eol, std::string &input);
+extern int stream_get_str(std::string &input, bool trim_eol = true);
 // Note! Function allocates memory for return value
-extern int stream_get_str(stream_t stream,
-                            bool skip_eol, char **input);
+extern int stream_get_str(char **input, bool trim_eol = true);
 
 // Get string value from STDIN stream
 // with trimming final CR/EOL sequence
@@ -209,12 +208,12 @@ extern int stream_get_str(stream_t stream,
 static inline int
 console_get_str(std::string &input)
 {
-    return stream_get_str(stream_t::STREAM_STDIN, true, input);
+    return stream_get_str(input);
 }
 static inline int
 console_get_str(char **input)
 {
-    return stream_get_str(stream_t::STREAM_STDIN, true, **input);
+    return stream_get_str(input);
 }
 
 //////////////////////////////////////////////////////

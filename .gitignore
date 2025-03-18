@@ -1,6 +1,8 @@
 # Folders with object and executable files
 bin
 obj
+ConsoleIOLibrary/x64
+ConsoleIOLibrary/ConsoleIOLibrary/x64
 # Linux executable
 a.out
 # Dependments file

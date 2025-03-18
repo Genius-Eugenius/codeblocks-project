@@ -1,7 +1,11 @@
 # Folders with object and executable files
 bin
 obj
+# Linux executable
+a.out
 # Dependments file
 first_app.depend
 # Layout file
 first_app.layout
+# <name>.h.gch
+*.h.gch

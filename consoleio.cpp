@@ -255,6 +255,42 @@ scalar::val_base_i(void)
     return enum_base.type_i();
 }
 
+// Get pointer to scalar value.
+// Pointer must be cast to one of listed types depen
+// appropriate to scalar value type:
+//
+// TYPE_BYTE    - (int8_t *)
+// TYPE_SHORT   - (int16_t *)
+// TYPE_LONG    - (int32_t *)
+// TYPE_DOUBLE  - (int64_t *)
+// TYPE_UBYTE   - (uint8_t *)
+// TYPE_USHORT  - (uint16_t *)
+// TYPE_ULONG   - (uint32_t *)
+// TYPE_UDOUBLE - (uint64_t *)
+void*
+scalar::val_ptr(void)
+{
+    return scalar_val;
+}
+// Scalar class operators
+#define SCALAR_OPERATOR_ASSIGN(_int_type, _scalar_type) \
+_int_type                                               \
+scalar::operator=(_int_type val)                        \
+{                                                       \
+    *((_int_type *)scalar_val) = val;                   \
+    scalar_type = scalar_t::TYPE_##_scalar_type;        \
+    return *((_int_type *)scalar_val);                  \
+}
+SCALAR_OPERATOR_ASSIGN(uint8_t, UBYTE)
+SCALAR_OPERATOR_ASSIGN(uint16_t, USHORT)
+SCALAR_OPERATOR_ASSIGN(uint32_t, ULONG)
+SCALAR_OPERATOR_ASSIGN(uint64_t, UDOUBLE)
+SCALAR_OPERATOR_ASSIGN(int8_t, BYTE)
+SCALAR_OPERATOR_ASSIGN(int16_t, SHORT)
+SCALAR_OPERATOR_ASSIGN(int32_t, LONG)
+SCALAR_OPERATOR_ASSIGN(int64_t, DOUBLE)
+#undef SCALAR_OPERATOR_ASSIGN
+
 //////////////////////////////////////////////////////
 // Module global functions                          //
 //////////////////////////////////////////////////////
@@ -264,26 +300,24 @@ scalar::val_base_i(void)
 // Signed and unsigned types are supported.
 //
 // arg[in]  str     String representation
-// arg[in]  base    Enumeration base type object
+// arg[out] val     Scalar value
 //
-// return:
-// On success - pointer to the returned integer value, must be cast
-// to the type (long long *) for all 64-bit integer types
-// and to (long *) for all other integer types,
-// On fault - NULL pointer.
-static void*
-str2int(string &str, scalar &type)
+// return: 0 - on success, -1 on fault
+static int
+str2scalar(string &str, scalar &val)
 {
+    int                 rc;
     static long         val_l;
     static long long    val_ll;
-    scalar_t            val_type        = type.val_type();
-    int                 basis           = type.enum_base.basis();
-    const char         *base_name       = type.enum_base.name();
+    scalar_t            val_type        = val.val_type();
+    int                 basis           = val.enum_base.basis();
+    const char         *base_name       = val.enum_base.name();
     const char         *val_type_name;
-    void               *retval = 0;
 
     try
     {
+        rc = 0;
+
         switch (val_type)
         {
             case scalar_t::TYPE_BYTE:
@@ -291,36 +325,32 @@ str2int(string &str, scalar &type)
             case scalar_t::TYPE_LONG:
                 val_l = stol(str, nullptr, basis);
                 val_type_name = "long";
-                retval = &val_l;
                 break;
             case scalar_t::TYPE_UBYTE:
             case scalar_t::TYPE_USHORT:
             case scalar_t::TYPE_ULONG:
                 val_l = (long)stoul(str, nullptr, basis);
                 val_type_name = "unsigned long";
-                retval = &val_l;
                 break;
             case scalar_t::TYPE_DOUBLE:
                 val_ll = stoll(str, nullptr, basis);
                 val_type_name = "long long";
-                retval = &val_ll;
                 break;
             case scalar_t::TYPE_UDOUBLE:
                 val_ll = (long long)stoull(str, nullptr, basis);
                 val_type_name = "unsigned long long";
-                retval = &val_ll;
                 break;
             default:
                 cerr << __FUNCTION__ << "() Scalar type is invalid." << endl;
-                return 0;
+                return -1;
         }
     }
     catch (invalid_argument(val))
     {
-        retval = 0;
+        rc = -1;
     }
 
-    if (retval == 0)
+    if (rc != 0)
     {
         cerr
             << __FUNCTION__
@@ -328,30 +358,39 @@ str2int(string &str, scalar &type)
             << str << endl << "' to the integer value type '"
             << val_type_name << "', enumeration base is '"
             << base_name << "'." << endl;
+        return -1;
     }
 
-    return retval;
+    switch (val_type)
+    {
+        case scalar_t::TYPE_BYTE:       val = (int8_t)val_l;    break;
+        case scalar_t::TYPE_SHORT:      val = (int16_t)val_l;   break;
+        case scalar_t::TYPE_LONG:       val = (int32_t)val_l;   break;
+        case scalar_t::TYPE_DOUBLE:     val = (int64_t)val_ll;  break;
+        case scalar_t::TYPE_UBYTE:      val = (uint8_t)val_l;   break;
+        case scalar_t::TYPE_USHORT:     val = (uint16_t)val_l;  break;
+        case scalar_t::TYPE_ULONG:      val = (uint32_t)val_l;  break;
+        case scalar_t::TYPE_UDOUBLE:    val = (uint64_t)val_ll; break;
+        default:;
+    }
+
+    return 0;
 }
 
 // Get integer value from user STDIN input.
 //
-// arg[in] type     Integer value type and enumeration base
+// arg[out] val Scalar value
 //
-// return:
-// On success - pointer to the returned integer value, must be cast
-// to the type (long long *) for all 64-bit integer types
-// and to (long *) for all other integer types,
-// On fault - NULL pointer.
-static void*
-console_get_int(scalar &type)
+// return: 0 - on success, -1 - on fault
+static int
+console_get_scalar(scalar &val)
 {
-    void       *retval = 0;
     string      input;
 
     if (console_get_str(input) != 0)
-        retval = str2int(input, type);
+        return str2scalar(input, val);
 
-    return retval;
+    return -1;
 }
 
 // Namespace for binary output functions
@@ -359,15 +398,15 @@ namespace bin_out {
 // Put integer value onto generic output in binary format.
 //
 // arg[in] stream   Output stream, STDOUT or STDERR
-// arg[in] type     Integer value type
-// arg[in] val_ptr  Pointer to inter value
+// arg[in] val      Scalar value type
 //
 // return Status, 0 - success, -1 - fault
 static int
-stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
+stream_put_int_gen(ostream &stream, scalar &val)
 {
-    scalar_t    val_type = type.val_type();
-    base_t      val_base = type.val_base();
+    void*       val_ptr     = val.val_ptr();
+    scalar_t    val_type    = val.val_type();
+    base_t      val_base    = val.val_base();
     int         p_width;
 
     if (val_base != base_t::BASE_BIN)
@@ -382,22 +421,22 @@ stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
     {
         case scalar_t::TYPE_BYTE:
         case scalar_t::TYPE_UBYTE:
-            p_width = type.enum_base.w_char();
+            p_width = val.enum_base.w_char();
             stream << setfill(FILL) << setw(p_width) << bitset<8>(*((uint8_t *)val_ptr));
             return 0;
         case scalar_t::TYPE_SHORT:
         case scalar_t::TYPE_USHORT:
-            p_width = type.enum_base.w_short();
+            p_width = val.enum_base.w_short();
             stream << setfill(FILL) << setw(p_width) << bitset<16>(*((uint16_t *)val_ptr));
             return 0;
         case scalar_t::TYPE_LONG:
         case scalar_t::TYPE_ULONG:
-            p_width = type.enum_base.w_long();
+            p_width = val.enum_base.w_long();
             stream << setfill(FILL) << setw(p_width) << bitset<32>(*((uint32_t *)val_ptr));
             return 0;
         case scalar_t::TYPE_DOUBLE:
         case scalar_t::TYPE_UDOUBLE:
-            p_width = type.enum_base.w_double();
+            p_width = val.enum_base.w_double();
             stream << setfill(FILL) << setw(p_width) << bitset<64>(*((uint64_t *)val_ptr));
             return 0;
         default:
@@ -413,19 +452,15 @@ namespace oct_out {
 // Put integer value onto generic output in octal format.
 //
 // arg[in] stream   Output stream, STDOUT or STDERR
-// arg[in] type     Integer value type
-// arg[in] val_ptr  Pointer to inter value
+// arg[in] val      Scalar value type
 //
 // return Status, 0 - success, -1 - fault
 static int
-stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
+stream_put_int_gen(ostream &stream, scalar &val)
 {
-    uint8_t     val_c = *((uint8_t *)val_ptr);
-    uint16_t    val_s = *((uint16_t *)val_ptr);
-    uint32_t    val_l = *((uint32_t *)val_ptr);
-    uint64_t    val_d = *((uint64_t *)val_ptr);
-    scalar_t    val_type = type.val_type();
-    base_t      val_base = type.val_base();
+    void*       val_ptr     = val.val_ptr();
+    scalar_t    val_type    = val.val_type();
+    base_t      val_base    = val.val_base();
     int         p_width;
 
     if (val_base != base_t::BASE_OCT)
@@ -438,23 +473,23 @@ stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
     {
         case scalar_t::TYPE_BYTE:
         case scalar_t::TYPE_UBYTE:
-            p_width = type.enum_base.w_char();
-            stream << oct << setfill(FILL) << setw(p_width) << val_c;
+            p_width = val.enum_base.w_char();
+            stream << oct << setfill(FILL) << setw(p_width) << *((uint8_t *)val_ptr);
             return 0;
         case scalar_t::TYPE_SHORT:
         case scalar_t::TYPE_USHORT:
-            p_width = type.enum_base.w_short();
-            stream << oct << setfill(FILL) << setw(p_width) << val_s;
+            p_width = val.enum_base.w_short();
+            stream << oct << setfill(FILL) << setw(p_width) << *((uint16_t *)val_ptr);
             return 0;
         case scalar_t::TYPE_LONG:
         case scalar_t::TYPE_ULONG:
-            p_width = type.enum_base.w_long();
-            stream << oct << setfill(FILL) << setw(p_width) << val_l;
+            p_width = val.enum_base.w_long();
+            stream << oct << setfill(FILL) << setw(p_width) << *((uint32_t *)val_ptr);
             return 0;
         case scalar_t::TYPE_DOUBLE:
         case scalar_t::TYPE_UDOUBLE:
-            p_width = type.enum_base.w_double();
-            stream << oct << setfill(FILL) << setw(p_width) << val_l;
+            p_width = val.enum_base.w_double();
+            stream << oct << setfill(FILL) << setw(p_width) << *((uint64_t *)val_ptr);
             return 0;
         default:
             cerr << __FUNCTION__ << "() Value type is invalid." << endl;
@@ -469,19 +504,15 @@ namespace hex_out {
 // Put integer value onto generic output in hexadecimal format.
 //
 // arg[in] stream   Output stream, STDOUT or STDERR
-// arg[in] type     Integer value type
-// arg[in] val_ptr  Pointer to inter value
+// arg[in] val      Scalar value
 //
 // return 0 - success, -1 - fault
 static int
-stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
+stream_put_int_gen(ostream &stream, scalar &val)
 {
-    uint8_t     val_c = *((uint8_t *)val_ptr);
-    uint16_t    val_s = *((uint16_t *)val_ptr);
-    uint32_t    val_l = *((uint32_t *)val_ptr);
-    uint64_t    val_d = *((uint64_t *)val_ptr);
-    scalar_t    val_type = type.val_type();
-    base_t      val_base = type.val_base();
+    void*       val_ptr     = val.val_ptr();
+    scalar_t    val_type    = val.val_type();
+    base_t      val_base    = val.val_base();
     int         p_width;
 
     if (val_base != base_t::BASE_HEX)
@@ -494,23 +525,23 @@ stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
     {
         case scalar_t::TYPE_BYTE:
         case scalar_t::TYPE_UBYTE:
-            p_width = type.enum_base.w_char();
-            stream << hex << setfill(FILL) << setw(p_width) << val_c;
+            p_width = val.enum_base.w_char();
+            stream << hex << setfill(FILL) << setw(p_width) << *((uint8_t *)val_ptr);
             return 0;
         case scalar_t::TYPE_SHORT:
         case scalar_t::TYPE_USHORT:
-            p_width = type.enum_base.w_short();
-            stream << hex << setfill(FILL) << setw(p_width) << val_s;
+            p_width = val.enum_base.w_short();
+            stream << hex << setfill(FILL) << setw(p_width) << *((uint16_t *)val_ptr);
             return 0;
         case scalar_t::TYPE_LONG:
         case scalar_t::TYPE_ULONG:
-            p_width = type.enum_base.w_long();
-            stream << hex << setfill(FILL) << setw(p_width) << val_l;
+            p_width = val.enum_base.w_long();
+            stream << hex << setfill(FILL) << setw(p_width) << *((uint32_t *)val_ptr);
             return 0;
         case scalar_t::TYPE_DOUBLE:
         case scalar_t::TYPE_UDOUBLE:
-            p_width = type.enum_base.w_double();
-            stream << hex << setfill(FILL) << setw(p_width) << val_l;
+            p_width = val.enum_base.w_double();
+            stream << hex << setfill(FILL) << setw(p_width) << *((uint64_t *)val_ptr);
             return 0;
         default:
             cerr << __FUNCTION__ << "() Value type is invalid." << endl;
@@ -524,32 +555,24 @@ stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
 // Output format depends on specified binary type.
 //
 // arg[in] stream   Output stream, STDOUT or STDERR
-// arg[in] type     Integer value type and enumeration base
-// arg[in] val_ptr  Pointer to location of integer value
+// arg[in] val      Scalar value
 //
 // return: 0 - success, -1 - fault
-int
-stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
+static int
+stream_put_int_gen(ostream &stream, scalar &val)
 {
-    long        val_l;
-    long long   val_ll;
-    scalar_t    val_type = type.val_type();
-    base_t      val_base = type.val_base();
-
-    if (val_ptr == 0)
-    {
-        cerr << __FUNCTION__ << "() argument 'val_ptr' is NULL" << endl;
-        return -1;
-    }
+    void*       val_ptr     = val.val_ptr();
+    scalar_t    val_type    = val.val_type();
+    base_t      val_base    = val.val_base();
 
     switch (val_base)
     {
         case base_t::BASE_BIN:
-            return bin_out::stream_put_int_gen(stream, type, val_ptr);
+            return bin_out::stream_put_int_gen(stream, val);
         case base_t::BASE_OCT:
-            return oct_out::stream_put_int_gen(stream, type, val_ptr);
+            return oct_out::stream_put_int_gen(stream, val);
         case base_t::BASE_HEX:
-            return hex_out::stream_put_int_gen(stream, type, val_ptr);
+            return hex_out::stream_put_int_gen(stream, val);
         case base_t::BASE_DEC:
             break;
         default:
@@ -561,20 +584,26 @@ stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
     // Decimal value type is here
     switch (val_type) {
         case scalar_t::TYPE_BYTE:
+            stream << *((int8_t *)val_ptr);
+            break;
         case scalar_t::TYPE_UBYTE:
-            val_l = (long)(*((uint8_t *)val_ptr));
+            stream << *((uint8_t *)val_ptr);
             break;
         case scalar_t::TYPE_SHORT:
+            stream << *((int16_t *)val_ptr);
+            break;
         case scalar_t::TYPE_USHORT:
-            val_l = (long)(*((uint16_t *)val_ptr));
+            stream << *((uint16_t *)val_ptr);
             break;
         case scalar_t::TYPE_LONG:
+            stream << *((int32_t *)val_ptr);
         case scalar_t::TYPE_ULONG:
-            val_l = (long)(*((uint32_t *)val_ptr));
+            stream << *((uint32_t *)val_ptr);
             break;
         case scalar_t::TYPE_DOUBLE:
+            stream << *((int64_t *)val_ptr);
         case scalar_t::TYPE_UDOUBLE:
-            val_ll = (long)(*((uint64_t *)val_ptr));
+            stream << *((uint64_t *)val_ptr);
             break;
         default:
             cerr
@@ -583,34 +612,110 @@ stream_put_int_gen(ostream &stream, scalar &type, void *val_ptr)
             return -1;
     }
 
-    switch (val_type) {
-        case scalar_t::TYPE_BYTE:
-        case scalar_t::TYPE_SHORT:
-        case scalar_t::TYPE_LONG:
-            stream << val_l;
-            break;
-        case scalar_t::TYPE_UBYTE:
-        case scalar_t::TYPE_USHORT:
-        case scalar_t::TYPE_ULONG:
-            stream << (unsigned long)val_l;
-            break;
-        case scalar_t::TYPE_DOUBLE:
-            stream << val_ll;
-            break;
-        case scalar_t::TYPE_UDOUBLE:
-            stream << (unsigned long long)val_ll;
-            break;
-        default:;
+    return 0;
+}
+
+// Class stream methods
+// and operators
+
+// Right shift operator: get scalar values or strings
+// from console input
+//
+// arg[out] val String or scalar value to get
+//
+// return 0 - on success, -1 - on fault
+int
+stream::operator>>(scalar &val)
+{
+    scalar_t val_type = val.val_type();
+
+    if (stream_type != STDIN)
+    {
+        cerr << "Stream operator >> : Stream must be input stream." << endl;
+        return -1;
     }
 
-    return 0;
+    if ((int)val_type < 0 || (int)val_type >= (int)(scalar_t::TYPE_INTS))
+    {
+        cerr << "Stream operator >> : Scalar value type is invalid." << endl;
+        return -1;
+    }
+
+    return console_get_scalar(val);
+}
+int
+stream::operator>>(string &val)
+{
+    if (stream_type != STDIN)
+    {
+        cerr << "Stream operator >> : Stream must be input stream." << endl;
+        return -1;
+    }
+
+    return stream_get_str(val, true);
+}
+int
+stream::operator>>(char** val)
+{
+    if (stream_type != STDIN)
+    {
+        cerr << "Stream operator >> : Stream must be input stream." << endl;
+        return -1;
+    }
+
+    if (val == NULL)
+    {
+        cerr << "Stream operator >> : Argument is NULL pointer." << endl;
+        return -1;
+    }
+
+    if (strlen(*val) == 0)
+    {
+        cerr << "Stream operator >> : Argument is empty string." << endl;
+        return -1;
+    }
+
+    return stream_get_str(val, true);
+}
+
+// Left shift operator: put scalar values and strings
+// on stream
+//
+// return 0 - on success, -1 - on faults
+int
+stream::operator<<(scalar &val)
+{
+    scalar_t val_type = val.val_type();
+
+    if ((int)val_type < 0 || (int)val_type >= (int)(scalar_t::TYPE_INTS))
+    {
+        cerr << "Stream operator << : Scalar value type is invalid." << endl;
+        return -1;
+    }
+
+    if (stream_type == STDOUT)
+        return stream_put_int_gen(cout, val);
+    else if (stream_type == STDERR)
+        return stream_put_int_gen(cerr, val);
+    else
+        cerr << "Stream operator << : Stream must be output stream." << endl;
+
+    return -1;
+}
+int
+stream::operator<<(const std::string &val)
+{
+    return stream_put_str(stream_type, false, val);
+}
+int
+stream::operator<<(const char *val)
+{
+    return stream_put_str(stream_type, false, val);
 }
 
 //////////////////////////////////////////////////////
 // Exported functions                               //
-//////////////////////////////////////////////////////
-// Functions for I/O operations with vector values  //
-//////////////////////////////////////////////////////
+//                                                  //
 // Functions for I/O operations with string values  //
 //////////////////////////////////////////////////////
 
@@ -647,8 +752,11 @@ stream_get_str(char **input, bool trim_eol)
             break;
         }
 
+#ifdef __STDC_LIB_EXT1__
         strcpy_s(*input, str.length() + 1, str.c_str());
-
+#else
+        strcpy(*input, str.c_str());
+#endif
         rc = 0;
     } while(0);
 
@@ -657,7 +765,7 @@ stream_get_str(char **input, bool trim_eol)
 
 // See definition in consoleio.h
 int
-stream_put_str(stream_t stream, bool put_endl, const string &val)
+stream_put_str(stream_t stream, bool put_endl, const std::string &val)
 {
 #define PUT_ON_STREAM(_stream) \
     if (put_endl)                   \
@@ -702,8 +810,4 @@ stream_put_str(stream_t stream, bool put_endl, const char *val)
 
     return stream_put_str(stream, put_endl, str);
 }
-
-//////////////////////////////////////////////////////
-// Functions for I/O operations with scalar values, //
-//////////////////////////////////////////////////////
 

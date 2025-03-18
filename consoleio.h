@@ -37,18 +37,6 @@
 // Global library data types                                //
 //////////////////////////////////////////////////////////////
 
-// Representation type for integer values
-// in stream output operations.
-enum class io_t
-{
-    IO_FORM,    // Formatted representation with
-                // enumeration base prefix,
-                // printable width and leading zeros
-    IO_UFOFM,   // Unformatted representation without
-                // enumeration base prefix,
-                // printable width and leading zeros
-};
-
 // Enumeration base type for string representation
 // of integer values in console I/O operations.
 enum class base_t
@@ -87,7 +75,7 @@ typedef class base
         {
             return base_type_i;
         }
-        // Get get enumeration base type name
+        // Get enumeration base type name
         const char *name(void);
         // Get enumeration basis value
         int         basis(void);
@@ -117,17 +105,26 @@ enum class scalar_t
     TYPE_ULONG,     // unsigned, unsigned int, uint32_t
     TYPE_DOUBLE,    // long long, int64_t
     TYPE_UDOUBLE,   // long long, uint64_t
-    TYPE_INVAL,
+    TYPE_INTS,      // Integer types boarder
+    // Floating-point types are not supported yet
+    TYPE_INVAL = TYPE_INTS,
 };
 
-// Class to represent scalar values
+// Class to represent scalar values of various integer
+// types and enumeration base types
 typedef class scalar
 {
     private:
-        uint64_t    scalar_val;     // Scalar value
-        scalar_t    scalar_type;    // Value type
+        // Scaler value data
+        // Location space is enough to place
+        // any scalar value from
+        // uint8_t to long double
+        uint8_t     scalar_val[16];
+        // Scalar value type
+        scalar_t    scalar_type;
     public:
-        base        enum_base;      // Enumeration base
+        // Enumeration base
+        base        enum_base;
         //
         // arg[in] val_type     Scalar value
         scalar(scalar_t val_type = SCALAR_DFLT,
@@ -138,6 +135,16 @@ typedef class scalar
         base_t      val_base(void);
         // Get enumeration base type index
         int         val_base_i(void);
+        // Get pointer to scalar value
+        void*       val_ptr(void);
+        uint8_t         operator=(uint8_t val);
+        uint16_t        operator=(uint16_t val);
+        uint32_t        operator=(uint32_t val);
+        uint64_t        operator=(uint64_t val);
+        int8_t          operator=(int8_t val);
+        int16_t         operator=(int16_t val);
+        int32_t         operator=(int32_t val);
+        int64_t         operator=(int64_t val);
 } scalar;
 
 // I/O stream type
@@ -149,7 +156,9 @@ enum class stream_t
     STREAM_INVAL,
 };
 
-// Class to represent I/O stream
+// Class to represent various types of I/O
+// stream with appropriate I/O operators
+// for various types of I/O data.
 typedef class stream {
 private:
     stream_t stream_type;
@@ -158,8 +167,10 @@ public:
     stream(stream_t type = STREAM_DFLT) : \
         stream_type(type) {};
     // Assignment operator
+    // Set necessary stream type through
+    // assignment operator
     stream_t    operator=(const stream_t type);
-    // Data output operator
+    // Left shift operator.
     //
     // Put data of various types onto output stream
     // (with stream_type == STOUT || stream_type == STDERR).
@@ -167,25 +178,24 @@ public:
     // stream << scalar
     // stream << string
     // stream << charstring
-    scalar& operator<<(const scalar& val);
-    std::string& operator<<(const std::string& val);
-    const char      operator<<(const char* val);
-    // Data input operator
+    int             operator<<(scalar& val);
+    int             operator<<(const std::string& val);
+    int             operator<<(const char* val);
+    // Right shift operator.
     //
     // Get data of various types from input stream
     // (with stream_type == STDIN).
+    //
+    // stream >> scalar
+    // stream >> string
+    // stream >> charstring
     int             operator>>(scalar& val);
     int             operator>>(std::string& val);
     int             operator>>(char** val);
 } stream;
 
 //////////////////////////////////////////////////////////////
-// Functions to get vector and scalar values                //
-// from input stream                                        //
-//////////////////////////////////////////////////////////////
-// Functions to process vector values                       //
-//////////////////////////////////////////////////////////////
-// Functions to process string values                       //
+// I/O functions fot string values                          //
 //////////////////////////////////////////////////////////////
 
 // Generic function to get string value from
@@ -296,100 +306,4 @@ console_log_err(const char *msg)
 {
     return console_put_str_err(true, msg);
 }
-
-//////////////////////////////////////////////////////////////
-// Get scalar values from input stream                      //
-//////////////////////////////////////////////////////////////
-
-// Generic function to get scalar value from input stream
-//
-// arg[in] type     Scalar value type
-// arg[out] val     Variable to put received value to
-//
-// return 0 - on success, -1 - on fault
-#define STREAM_GET_SCALAR(_val_type) \
-extern int stream_get_scalar(stream_t stream,       \
-                             scalar &type,          \
-                             _val_type &val);
-STREAM_GET_SCALAR(unsigned)
-STREAM_GET_SCALAR(signed)
-STREAM_GET_SCALAR(uint64_t)
-STREAM_GET_SCALAR(int64_t)
-#undef STREAM_GET_SCALAR
-
-// Get scalar value from STDIN stream in various base
-// representations
-//
-// arg[in] type     Scalar value type
-// arg[out] val     Variable to put received value to
-//
-// return 0 - on success, -1 - on fault
-#define CONSOLE_GET_SCALAR(_val_type) \
-static inline int                                       \
-console_get_scalar(scalar &type, _val_type &val)        \
-{                                                       \
-    return stream_get_scalar(stream_t::STREAM_STDIN,    \
-                                 type, val);            \
-}
-CONSOLE_GET_SCALAR(unsigned)
-CONSOLE_GET_SCALAR(signed)
-CONSOLE_GET_SCALAR(uint64_t)
-CONSOLE_GET_SCALAR(int64_t)
-#undef CONSOLE_GET_SCALAR
-
-//////////////////////////////////////////////////////
-// Put scalar values to output stream               //
-//////////////////////////////////////////////////////
-
-// Put scalar value to output stream
-//
-// arg[in] stream   Stream to put value to
-// arg[in] type     Value type
-// arg[in] val      Value to put onto stream
-#define CONSOLE_PUT_SCALAR_GEN
-extern int stream_put_scalar_gen(stream_t stream, scalar &type, unsigned &val);
-
-// Put scalar value to output stream in various types
-// of string representations
-//
-// arg[in] stream   Output stream to put value to
-// arg[in] base     Enumeration base for integer values
-// arg[in] val Integer value to put onto console
-//
-// return Status: 0 - on success, -1 on fault
-extern int console_out_bin(uint8_t val);
-extern int console_out_bin(uint16_t val);
-extern int console_out_bin(uint32_t val);
-extern int console_out_bin(uint64_t val);
-
-// Put integer value to STDERR stream in binary form.
-//
-// arg[in] val Integer value to put onto console
-//
-// return Status: 0 - on success, -1 on fault
-extern int console_err_bin(uint8_t val);
-extern int console_err_bin(uint16_t val);
-extern int console_err_bin(uint32_t val);
-extern int console_err_bin(uint64_t val);
-
-// Put integer value to STDOUT stream in hexadecimal form.
-//
-// arg[in] val Integer value to put onto console
-//
-// return Status: 0 - on success, -1 on fault
-extern int console_out_hex(uint8_t val);
-extern int console_out_hex(uint16_t val);
-extern int console_out_hex(uint32_t val);
-extern int console_out_hex(uint64_t val);
-
-// Put integer value to STDERR stream in hexadecimal form.
-//
-// arg[in] val Integer value to put onto console
-//
-// return Status: 0 - on success, -1 on fault
-extern int console_err_hex(uint8_t val);
-extern int console_err_hex(uint16_t val);
-extern int console_err_hex(uint32_t val);
-extern int console_err_hex(uint64_t val);
-
 #endif //HAVE_CONSOLEIO_H

@@ -1,4 +1,5 @@
 #include "consoleio.h"
+#include <string>
 #include <iomanip>
 #include <bitset>
 #include <cstring>
@@ -99,8 +100,7 @@ base_w_double[] =
     {BASE_BIN_W_DOUBLE, BASE_OCT_W_DOUBLE, BASE_HEX_W_DOUBLE, BASE_DEC_W_DOUBLE};
 
 //////////////////////////////////////////////////////
-// Class 'base' methods,                            //
-// see definitions in consoleio.h                   //
+// Module global functions                          //
 //////////////////////////////////////////////////////
 
 // Return enumeration base type corresponding
@@ -133,167 +133,6 @@ base_str2type(const char *val)
 
     return rc;
 }
-
-// Get base name
-const char*
-base::name(void)
-{
-    return base_name[base_type_i];
-}
-
-// Get constants
-#define BASE_GET_CONST(_field) \
-int                                     \
-base::_field(void)                      \
-{                                       \
-    return base_##_field[base_type_i];  \
-}
-BASE_GET_CONST(basis)
-BASE_GET_CONST(w_char)
-BASE_GET_CONST(w_short)
-BASE_GET_CONST(w_long)
-BASE_GET_CONST(w_double)
-#undef BASE_GET_CONST()
-
-// Class base operators
-// Assignment operator
-base_t
-base::operator=(base &val)
-{
-    base_type = val.type();
-    base_type_i = (int)base_type;
-    return base_type;
-}
-base_t
-base::operator=(base_t val)
-{
-    if ((int)val < 0 || (int)val >= (int)(base_t::BASE_INVAL))
-    {
-        cerr
-            << __FUNCTION__ << "() Base type value is invalid." << endl;
-        return base_t::BASE_INVAL;
-    }
-
-    base_type = val;
-    base_type_i = (int)val;
-
-    return base_type;
-}
-base_t
-base::operator=(int val)
-{
-    if (val < 0 || val >= (int)(base_t::BASE_INVAL))
-    {
-        cerr
-            << __FUNCTION__ << "() Base type value is invalid." << endl;
-        return base_t::BASE_INVAL;
-    }
-
-    base_type = (base_t)val;
-    base_type_i = val;
-
-    return base_type;
-}
-base_t
-base::operator=(const char *val)
-{
-    base_t rc = base_str2type(val);
-
-    if ((int)rc >= 0 && (int)rc < (int)(base_t::BASE_INVAL))
-    {
-        base_type = rc;
-        base_type_i = (int)rc;
-    }
-
-    return base_type;
-}
-base_t
-base::operator=(const std::string &val)
-{
-    const char *charstr = val.c_str();
-    base_t rc = base_str2type(charstr);
-
-    if ((int)rc >= 0 && (int)rc < (int)(base_t::BASE_INVAL))
-    {
-        base_type = rc;
-        base_type_i = (int)rc;
-    }
-
-    return base_type;
-}
-
-//////////////////////////////////////////////////////
-// Class 'scalar' methods,                          //
-// see definitio in consoleio.h                     //
-//////////////////////////////////////////////////////
-
-// Constructor
-scalar::scalar(scalar_t val_type, base_t val_base) : \
-               scalar_type(val_type)                    \
-{                                                       \
-    enum_base = val_base;                               \
-}
-
-// Get scalar value type
-scalar_t
-scalar::val_type(void)
-{
-    return scalar_type;
-}
-
-// Get enumeration base type
-base_t
-scalar::val_base(void)
-{
-    return enum_base.type();
-}
-
-// Get enumeration base type index
-int
-scalar::val_base_i(void)
-{
-    return enum_base.type_i();
-}
-
-// Get pointer to scalar value.
-// Pointer must be cast to one of listed types depen
-// appropriate to scalar value type:
-//
-// TYPE_BYTE    - (int8_t *)
-// TYPE_SHORT   - (int16_t *)
-// TYPE_LONG    - (int32_t *)
-// TYPE_DOUBLE  - (int64_t *)
-// TYPE_UBYTE   - (uint8_t *)
-// TYPE_USHORT  - (uint16_t *)
-// TYPE_ULONG   - (uint32_t *)
-// TYPE_UDOUBLE - (uint64_t *)
-void*
-scalar::val_ptr(void)
-{
-    return scalar_val;
-}
-// Scalar class operators
-#define SCALAR_OPERATOR_ASSIGN(_int_type, _scalar_type) \
-_int_type                                               \
-scalar::operator=(_int_type val)                        \
-{                                                       \
-    *((_int_type *)scalar_val) = val;                   \
-    scalar_type = scalar_t::TYPE_##_scalar_type;        \
-    return *((_int_type *)scalar_val);                  \
-}
-SCALAR_OPERATOR_ASSIGN(uint8_t, UBYTE)
-SCALAR_OPERATOR_ASSIGN(uint16_t, USHORT)
-SCALAR_OPERATOR_ASSIGN(uint32_t, ULONG)
-SCALAR_OPERATOR_ASSIGN(uint64_t, UDOUBLE)
-SCALAR_OPERATOR_ASSIGN(int8_t, BYTE)
-SCALAR_OPERATOR_ASSIGN(int16_t, SHORT)
-SCALAR_OPERATOR_ASSIGN(int32_t, LONG)
-SCALAR_OPERATOR_ASSIGN(int64_t, DOUBLE)
-#undef SCALAR_OPERATOR_ASSIGN
-
-//////////////////////////////////////////////////////
-// Module global functions                          //
-//////////////////////////////////////////////////////
 
 // Convert value from the string form to integer.
 // Octal, decimal and hexadecimal representations are supported.
@@ -385,12 +224,19 @@ str2scalar(string &str, scalar &val)
 static int
 console_get_scalar(scalar &val)
 {
+    scalar_t    val_type = val.val_type();
     string      input;
 
-    if (console_get_str(input) != 0)
-        return str2scalar(input, val);
+    if ((int)val_type < 0 || (int)val_type >= (int)(scalar_t::TYPE_INTS))
+    {
+        cerr << "Stream operator >> : Scalar value type is invalid." << endl;
+        return -1;
+    }
 
-    return -1;
+    cin >> input;
+    cin.ignore();
+
+    return str2scalar(input, val);
 }
 
 // Namespace for binary output functions
@@ -445,6 +291,64 @@ stream_put_int_gen(ostream &stream, scalar &val)
 
     return -1;
 }
+} // namespace bin_out
+
+// Function body macro
+//
+// arg _manip   I/O manip 'hex' or 'oct'
+// arg _base_t  Base type 'HEX' or 'OCT'
+#define STREAM_PUT_INT_GEN(_manip, _base_t) \
+{                                                                       \
+    scalar_t    val_type    = val.val_type();                           \
+    base_t      val_base    = val.val_base();                           \
+    int         p_width;                                                \
+                                                                        \
+    if (val_base != base_t::BASE_##_base_t)                             \
+    {                                                                   \
+        cerr                                                            \
+         << __FUNCTION__ << "() Enumeration base is invalid." << endl;  \
+        return -1;                                                      \
+    }                                                                   \
+                                                                        \
+    switch (val_type)                                                   \
+    {                                                                   \
+        case scalar_t::TYPE_BYTE:                                       \
+        case scalar_t::TYPE_UBYTE:                                      \
+            p_width = val.enum_base.w_char();                           \
+            break;                                                      \
+        case scalar_t::TYPE_SHORT:                                      \
+        case scalar_t::TYPE_USHORT:                                     \
+            p_width = val.enum_base.w_short();                          \
+            break;                                                      \
+        case scalar_t::TYPE_LONG:                                       \
+        case scalar_t::TYPE_ULONG:                                      \
+            p_width = val.enum_base.w_long();                           \
+            break;                                                      \
+        case scalar_t::TYPE_DOUBLE:                                     \
+        case scalar_t::TYPE_UDOUBLE:                                    \
+            p_width = val.enum_base.w_double();                         \
+            break;                                                      \
+        default:                                                        \
+            cerr                                                        \
+                << __FUNCTION__ << "() Value type is invalid." << endl; \
+            return -1;                                                  \
+    }                                                                   \
+                                                                        \
+    if (val_type == scalar_t::TYPE_DOUBLE ||                            \
+        val_type == scalar_t::TYPE_UDOUBLE)                             \
+    {                                                                   \
+        stream                                                          \
+            << _manip << setfill(FILL) << setw(p_width)                 \
+            << val.val_ud();                                            \
+    }                                                                   \
+    else                                                                \
+    {                                                                   \
+        stream                                                          \
+            << _manip << setfill(FILL) << setw(p_width)                 \
+            << val.val_ul();                                            \
+    }                                                                   \
+                                                                        \
+    return 0;                                                           \
 }
 
 // Namespace for printout in octal format
@@ -457,47 +361,8 @@ namespace oct_out {
 // return Status, 0 - success, -1 - fault
 static int
 stream_put_int_gen(ostream &stream, scalar &val)
-{
-    void*       val_ptr     = val.val_ptr();
-    scalar_t    val_type    = val.val_type();
-    base_t      val_base    = val.val_base();
-    int         p_width;
-
-    if (val_base != base_t::BASE_OCT)
-    {
-        cerr << __FUNCTION__ << "() Enumeration base is invalid." << endl;
-        return -1;
-    }
-
-    switch (val_type)
-    {
-        case scalar_t::TYPE_BYTE:
-        case scalar_t::TYPE_UBYTE:
-            p_width = val.enum_base.w_char();
-            stream << oct << setfill(FILL) << setw(p_width) << *((uint8_t *)val_ptr);
-            return 0;
-        case scalar_t::TYPE_SHORT:
-        case scalar_t::TYPE_USHORT:
-            p_width = val.enum_base.w_short();
-            stream << oct << setfill(FILL) << setw(p_width) << *((uint16_t *)val_ptr);
-            return 0;
-        case scalar_t::TYPE_LONG:
-        case scalar_t::TYPE_ULONG:
-            p_width = val.enum_base.w_long();
-            stream << oct << setfill(FILL) << setw(p_width) << *((uint32_t *)val_ptr);
-            return 0;
-        case scalar_t::TYPE_DOUBLE:
-        case scalar_t::TYPE_UDOUBLE:
-            p_width = val.enum_base.w_double();
-            stream << oct << setfill(FILL) << setw(p_width) << *((uint64_t *)val_ptr);
-            return 0;
-        default:
-            cerr << __FUNCTION__ << "() Value type is invalid." << endl;
-    }
-
-    return -1;
-}
-}
+STREAM_PUT_INT_GEN(oct, OCT)
+} // namespace oct_out
 
 // Namespace for printout in hexadecimal format.
 namespace hex_out {
@@ -509,47 +374,8 @@ namespace hex_out {
 // return 0 - success, -1 - fault
 static int
 stream_put_int_gen(ostream &stream, scalar &val)
-{
-    void*       val_ptr     = val.val_ptr();
-    scalar_t    val_type    = val.val_type();
-    base_t      val_base    = val.val_base();
-    int         p_width;
-
-    if (val_base != base_t::BASE_HEX)
-    {
-        cerr << __FUNCTION__ << "() Enumeration base is invalid." << endl;
-        return -1;
-    }
-
-    switch (val_type)
-    {
-        case scalar_t::TYPE_BYTE:
-        case scalar_t::TYPE_UBYTE:
-            p_width = val.enum_base.w_char();
-            stream << hex << setfill(FILL) << setw(p_width) << *((uint8_t *)val_ptr);
-            return 0;
-        case scalar_t::TYPE_SHORT:
-        case scalar_t::TYPE_USHORT:
-            p_width = val.enum_base.w_short();
-            stream << hex << setfill(FILL) << setw(p_width) << *((uint16_t *)val_ptr);
-            return 0;
-        case scalar_t::TYPE_LONG:
-        case scalar_t::TYPE_ULONG:
-            p_width = val.enum_base.w_long();
-            stream << hex << setfill(FILL) << setw(p_width) << *((uint32_t *)val_ptr);
-            return 0;
-        case scalar_t::TYPE_DOUBLE:
-        case scalar_t::TYPE_UDOUBLE:
-            p_width = val.enum_base.w_double();
-            stream << hex << setfill(FILL) << setw(p_width) << *((uint64_t *)val_ptr);
-            return 0;
-        default:
-            cerr << __FUNCTION__ << "() Value type is invalid." << endl;
-    }
-
-    return -1;
-}
-}
+STREAM_PUT_INT_GEN(hex, HEX)
+} // Namespace hex_out
 
 // Put integer value onto generic output.
 // Output format depends on specified binary type.
@@ -561,9 +387,8 @@ stream_put_int_gen(ostream &stream, scalar &val)
 static int
 stream_put_int_gen(ostream &stream, scalar &val)
 {
-    void*       val_ptr     = val.val_ptr();
-    scalar_t    val_type    = val.val_type();
-    base_t      val_base    = val.val_base();
+    scalar_t    val_type        = val.val_type();
+    base_t      val_base        = val.val_base();
 
     switch (val_base)
     {
@@ -584,26 +409,20 @@ stream_put_int_gen(ostream &stream, scalar &val)
     // Decimal value type is here
     switch (val_type) {
         case scalar_t::TYPE_BYTE:
-            stream << *((int8_t *)val_ptr);
+        case scalar_t::TYPE_SHORT:
+        case scalar_t::TYPE_LONG:
+            stream << val.val_l();
             break;
         case scalar_t::TYPE_UBYTE:
-            stream << *((uint8_t *)val_ptr);
-            break;
-        case scalar_t::TYPE_SHORT:
-            stream << *((int16_t *)val_ptr);
-            break;
         case scalar_t::TYPE_USHORT:
-            stream << *((uint16_t *)val_ptr);
-            break;
-        case scalar_t::TYPE_LONG:
-            stream << *((int32_t *)val_ptr);
         case scalar_t::TYPE_ULONG:
-            stream << *((uint32_t *)val_ptr);
+            stream << val.val_ul();
             break;
         case scalar_t::TYPE_DOUBLE:
-            stream << *((int64_t *)val_ptr);
+            stream << val.val_d();
+            break;
         case scalar_t::TYPE_UDOUBLE:
-            stream << *((uint64_t *)val_ptr);
+            stream << val.val_ud();
             break;
         default:
             cerr
@@ -615,79 +434,257 @@ stream_put_int_gen(ostream &stream, scalar &val)
     return 0;
 }
 
-// Class stream methods
-// and operators
+//////////////////////////////////////////////////////
+// Class 'base' methods and operators.              //
+// See definitions in consoleio.h                   //
+//////////////////////////////////////////////////////
 
-// Right shift operator: get scalar values or strings
+// Get enumeration base type name.
+const char*
+base::name(void)
+{
+    return base_name[base_type_i];
+}
+
+// Get printable width constants
+// for given enumeration base type and various
+// types of integer values.
+#define BASE_GET_CONST(_field) \
+int                                     \
+base::_field(void)                      \
+{                                       \
+    return base_##_field[base_type_i];  \
+}
+BASE_GET_CONST(basis)
+BASE_GET_CONST(w_char)
+BASE_GET_CONST(w_short)
+BASE_GET_CONST(w_long)
+BASE_GET_CONST(w_double)
+#undef BASE_GET_CONST()
+
+// Class 'base' operators.
+// Assignment operator.
+// Assign enumeration base type taken from
+// source value of various types.
+base_t
+base::operator=(base &val)
+{
+    base_type = val.type();
+    base_type_i = (int)base_type;
+    return base_type;
+}
+base_t
+base::operator=(base_t val)
+{
+    if ((int)val < 0 || (int)val >= (int)(base_t::BASE_INVAL))
+    {
+        cerr
+            << "Class 'base', operator = : Base type value is invalid." << endl;
+        return base_t::BASE_INVAL;
+    }
+
+    base_type = val;
+    base_type_i = (int)val;
+
+    return base_type;
+}
+base_t
+base::operator=(int val)
+{
+    if (val < 0 || val >= (int)(base_t::BASE_INVAL))
+    {
+        cerr
+            << "Class 'base', operator = : Base type value is invalid." << endl;
+        return base_t::BASE_INVAL;
+    }
+
+    base_type = (base_t)val;
+    base_type_i = val;
+
+    return base_type;
+}
+base_t
+base::operator=(const char *val)
+{
+    base_t rc = base_str2type(val);
+
+    if ((int)rc >= 0 && (int)rc < (int)(base_t::BASE_INVAL))
+    {
+        base_type = rc;
+        base_type_i = (int)rc;
+    }
+    else
+    {
+        cerr
+            << "Class 'base' operator = : Base type string value '"
+            << val << "' is invalid." << endl;
+        return base_t::BASE_INVAL;
+    }
+
+    return base_type;
+}
+
+//////////////////////////////////////////////////////
+// Class 'scalar' methods,                          //
+// see definition in consoleio.h                    //
+//////////////////////////////////////////////////////
+
+// Constructor
+scalar::scalar(scalar_t val_type, base_t val_base) : \
+               scalar_type(val_type)                    \
+{                                                       \
+    enum_base = val_base;                               \
+}
+
+// Get scalar value type
+scalar_t
+scalar::val_type(void)
+{
+    return scalar_type;
+}
+
+// Get enumeration base type
+base_t
+scalar::val_base(void)
+{
+    return enum_base.type();
+}
+
+// Get enumeration base type index
+int
+scalar::val_base_i(void)
+{
+    return enum_base.type_i();
+}
+
+// Get scalar value cast to various
+// integer types.
+long
+scalar::val_l(void)
+{
+    switch (scalar_type)
+    {
+        case scalar_t::TYPE_BYTE:
+            return (long)(*((int8_t *)scalar_val));
+        case scalar_t::TYPE_SHORT:
+            return (long)(*((int16_t *)scalar_val));
+        case scalar_t::TYPE_LONG:
+            return (long)(*((int32_t *)scalar_val));
+        default:
+            cerr
+                << "scalar.val_l(): Value type is invalid." << endl;
+    }
+    return -1;
+}
+unsigned long
+scalar::val_ul(void)
+{
+    switch (scalar_type)
+    {
+        case scalar_t::TYPE_UBYTE:
+            return (unsigned long)(*((uint8_t *)scalar_val));
+        case scalar_t::TYPE_USHORT:
+            return (unsigned long)(*((uint16_t *)scalar_val));
+        case scalar_t::TYPE_ULONG:
+            return (unsigned long)(*((uint32_t *)scalar_val));
+        default:
+            cerr
+                << "scalar.val_ul(): Value type is invalid." << endl;
+    }
+    return (unsigned long)-1;
+}
+long long
+scalar::val_d(void)
+{
+    if (scalar_type == scalar_t::TYPE_DOUBLE)
+        return (long long)(*((int64_t *)scalar_val));
+
+    cerr << "scalar.val_d(): Value type is invalid." << endl;
+
+    return -1;
+}
+unsigned long long
+scalar::val_ud(void)
+{
+    if (scalar_type == scalar_t::TYPE_UDOUBLE)
+        return (unsigned long long)(*((uint64_t *)scalar_val));
+
+    cerr << "scalar.val_ud(): Value type is invalid." << endl;
+
+    return (unsigned long long)-1;
+}
+
+// Get pointer to scalar value.
+// Pointer must be cast to one of listed types
+// appropriate to scalar value type:
+//
+// TYPE_BYTE    - (int8_t *)
+// TYPE_SHORT   - (int16_t *)
+// TYPE_LONG    - (int32_t *)
+// TYPE_DOUBLE  - (int64_t *)
+// TYPE_UBYTE   - (uint8_t *)
+// TYPE_USHORT  - (uint16_t *)
+// TYPE_ULONG   - (uint32_t *)
+// TYPE_UDOUBLE - (uint64_t *)
+void*
+scalar::val_ptr(void)
+{
+    return scalar_val;
+}
+
+// Scalar class operators
+#define SCALAR_OPERATOR_ASSIGN(_int_type, _scalar_type) \
+_int_type                                               \
+scalar::operator=(_int_type val)                        \
+{                                                       \
+    *((_int_type *)scalar_val) = val;                   \
+    scalar_type = scalar_t::TYPE_##_scalar_type;        \
+    return *((_int_type *)scalar_val);                  \
+}
+SCALAR_OPERATOR_ASSIGN(uint8_t, UBYTE)
+SCALAR_OPERATOR_ASSIGN(uint16_t, USHORT)
+SCALAR_OPERATOR_ASSIGN(uint32_t, ULONG)
+SCALAR_OPERATOR_ASSIGN(uint64_t, UDOUBLE)
+SCALAR_OPERATOR_ASSIGN(int8_t, BYTE)
+SCALAR_OPERATOR_ASSIGN(int16_t, SHORT)
+SCALAR_OPERATOR_ASSIGN(int32_t, LONG)
+SCALAR_OPERATOR_ASSIGN(int64_t, DOUBLE)
+#undef SCALAR_OPERATOR_ASSIGN
+
+//////////////////////////////////////////////////////
+// Class stream methods and operators.              //
+// See definitions in consoleio.h                   //
+//////////////////////////////////////////////////////
+
+// Right shift operator: get scalar values
 // from console input
 //
-// arg[out] val String or scalar value to get
+// arg[out] val Scalar value to get
 //
 // return 0 - on success, -1 - on fault
 int
 stream::operator>>(scalar &val)
 {
-    scalar_t val_type = val.val_type();
 
     if (stream_type != STDIN)
     {
         cerr << "Stream operator >> : Stream must be input stream." << endl;
-        return -1;
-    }
-
-    if ((int)val_type < 0 || (int)val_type >= (int)(scalar_t::TYPE_INTS))
-    {
-        cerr << "Stream operator >> : Scalar value type is invalid." << endl;
         return -1;
     }
 
     return console_get_scalar(val);
 }
-int
-stream::operator>>(string &val)
-{
-    if (stream_type != STDIN)
-    {
-        cerr << "Stream operator >> : Stream must be input stream." << endl;
-        return -1;
-    }
 
-    return stream_get_str(val, true);
-}
-int
-stream::operator>>(char** val)
-{
-    if (stream_type != STDIN)
-    {
-        cerr << "Stream operator >> : Stream must be input stream." << endl;
-        return -1;
-    }
-
-    if (val == NULL)
-    {
-        cerr << "Stream operator >> : Argument is NULL pointer." << endl;
-        return -1;
-    }
-
-    if (strlen(*val) == 0)
-    {
-        cerr << "Stream operator >> : Argument is empty string." << endl;
-        return -1;
-    }
-
-    return stream_get_str(val, true);
-}
-
-// Left shift operator: put scalar values and strings
+// Left shift operator: put scalar values
 // on stream
 //
 // return 0 - on success, -1 - on faults
 int
 stream::operator<<(scalar &val)
 {
-    scalar_t val_type = val.val_type();
+    scalar_t scalar_type = val.val_type();
 
-    if ((int)val_type < 0 || (int)val_type >= (int)(scalar_t::TYPE_INTS))
+    if ((int)scalar_type < 0 || (int)scalar_type >= (int)(scalar_t::TYPE_INTS))
     {
         cerr << "Stream operator << : Scalar value type is invalid." << endl;
         return -1;
@@ -702,112 +699,3 @@ stream::operator<<(scalar &val)
 
     return -1;
 }
-int
-stream::operator<<(const std::string &val)
-{
-    return stream_put_str(stream_type, false, val);
-}
-int
-stream::operator<<(const char *val)
-{
-    return stream_put_str(stream_type, false, val);
-}
-
-//////////////////////////////////////////////////////
-// Exported functions                               //
-//                                                  //
-// Functions for I/O operations with string values  //
-//////////////////////////////////////////////////////
-
-// See definition in consoleio.h
-int
-stream_get_str(std::string &input, bool trim_eol)
-{
-    cin >> input;
-    if (trim_eol)
-        cin.ignore();
-
-    return 0;
-}
-int
-stream_get_str(char **input, bool trim_eol)
-{
-    int     rc = -1;
-    string  str;
-
-    do {
-        if (input == NULL)
-        {
-            cerr << __FUNCTION__ << "() Value 'input' is NULL." << endl;
-            break;
-        }
-
-        cin >> str;
-        if (trim_eol)
-            cin.ignore();
-
-        if ((*input = new char[str.length() + 1]) == NULL)
-        {
-            cerr << __FUNCTION__ << "() Memory allocation fault" << endl;
-            break;
-        }
-
-#ifdef __STDC_LIB_EXT1__
-        strcpy_s(*input, str.length() + 1, str.c_str());
-#else
-        strcpy(*input, str.c_str());
-#endif
-        rc = 0;
-    } while(0);
-
-    return rc;
-}
-
-// See definition in consoleio.h
-int
-stream_put_str(stream_t stream, bool put_endl, const std::string &val)
-{
-#define PUT_ON_STREAM(_stream) \
-    if (put_endl)                   \
-        _stream << val << endl;     \
-    else                            \
-        _stream << val;             \
-    break;
-    switch (stream)
-    {
-        case stream_t::STREAM_STDOUT:
-            PUT_ON_STREAM(cout)
-        case stream_t::STREAM_STDERR:
-            PUT_ON_STREAM(cerr)
-        default:
-            cerr
-                << __FUNCTION__
-                << "() Stream type value of 'stream' argument "
-                   "is not supported"
-                << endl;
-            return -1;
-    }
-#undef PUT_ON_STREAM
-
-    return 0;
-}
-int
-stream_put_str(stream_t stream, bool put_endl, const char *val)
-{
-    string  str;
-
-    if (val == NULL)
-    {
-        cerr << __FUNCTION__ << "() Value 'val' is NULL" << endl;
-        return -1;
-    }
-    if (strlen(val) == 0)
-    {
-        cerr << __FUNCTION__ << "() Argument 'val' is empty string" << endl;
-    }
-
-    str = val;
-
-    return stream_put_str(stream, put_endl, str);
-}
-

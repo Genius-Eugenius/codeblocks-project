@@ -6,7 +6,6 @@
 #ifndef HAVE_CONSOLEIO_H
 #define HAVE_CONSOLEIO_H
 #include <iostream>
-#include <string>
 
 //////////////////////////////////////////////////////////////
 // Global library defines                                   //
@@ -49,22 +48,22 @@ enum class base_t
 };
 
 // Class to represent enumeration base types
-// of integer values
+// of integer values.
 typedef class base
 {
     private:
         base_t  base_type;      // Enumeration
-                                // base type
+                                // base type.
         int     base_type_i;    // Enumeration
-                                // base type index
+                                // base type index.
     public:
         // Constructor
-        // arg[in] type Enumeration base type
+        // arg[in] type Enumeration base type.
         base(base_t type = BASE_DFLT) : \
             base_type(type), base_type_i((int)type) {};
         // Get base type in the form of
         // base type enumeration class and
-        // in the form of an integer value
+        // in the form of an integer value.
         base_t
         type(void)
         {
@@ -75,22 +74,23 @@ typedef class base
         {
             return base_type_i;
         }
-        // Get enumeration base type name
+        // Get enumeration base type name.
         const char *name(void);
-        // Get enumeration basis value
+        // Get enumeration basis value.
         int         basis(void);
-        // Get value printable width in characters
-        // for various types of integer value
+        // Get printable width in characters
+        // for given base type for various types
+        // of integer values.
         int         w_char(void);
         int         w_short(void);
         int         w_long(void);
         int         w_double(void);
-        // Assignment operators
+        // Assignment operators.
+        // Assign enumeration base type
         base_t operator=(base &val);
         base_t operator=(base_t val);
         base_t operator=(int val);
         base_t operator=(const char *val);
-        base_t operator=(const std::string &val);
 } base;
 
 // Scalar value type for string representation
@@ -137,6 +137,24 @@ typedef class scalar
         int         val_base_i(void);
         // Get pointer to scalar value
         void*       val_ptr(void);
+        // Get scalar value cast to
+        // various integer types
+        //
+        // return scalar value cast to
+        // integer type on success or
+        // -1 cast to integer type on fault
+        long                val_l(void);
+        long long           val_d(void);
+        unsigned long       val_ul(void);
+        unsigned long long  val_ud(void);
+        // Assign the type of scalar value
+        scalar_t        operator=(scalar_t type)
+        {
+            scalar_type = type;
+            return scalar_type;
+        }
+        // Assign scalar value and scalar type
+        // from various types of integer values.
         uint8_t         operator=(uint8_t val);
         uint16_t        operator=(uint16_t val);
         uint32_t        operator=(uint32_t val);
@@ -169,141 +187,25 @@ public:
     // Assignment operator
     // Set necessary stream type through
     // assignment operator
-    stream_t    operator=(const stream_t type);
+    stream_t    operator=(const stream_t type)
+    {
+        stream_type = type;
+        return stream_type;
+    }
     // Left shift operator.
     //
-    // Put data of various types onto output stream
+    // Put data of various scalar types onto output stream
     // (with stream_type == STOUT || stream_type == STDERR).
     //
     // stream << scalar
-    // stream << string
-    // stream << charstring
     int             operator<<(scalar& val);
-    int             operator<<(const std::string& val);
-    int             operator<<(const char* val);
     // Right shift operator.
     //
-    // Get data of various types from input stream
+    // Get data of various scalar types from input stream
     // (with stream_type == STDIN).
     //
     // stream >> scalar
-    // stream >> string
-    // stream >> charstring
     int             operator>>(scalar& val);
-    int             operator>>(std::string& val);
-    int             operator>>(char** val);
 } stream;
 
-//////////////////////////////////////////////////////////////
-// I/O functions fot string values                          //
-//////////////////////////////////////////////////////////////
-
-// Generic function to get string value from
-// input stream with possible trimming final CR/EOL sequence
-//
-// arg[in]  trim_eol    Trim CR/EOL at the end of input string
-// arg[out] input       User input in string form taken from
-//                      input stream
-//
-// return 0 - on success, -1 -on fault
-extern int stream_get_str(std::string &input, bool trim_eol = true);
-// Note! Function allocates memory for return value
-extern int stream_get_str(char **input, bool trim_eol = true);
-
-// Get string value from STDIN stream
-// with trimming final CR/EOL sequence
-//
-// arg[out] input   User input in string form
-//                  taken from 'cin' stream
-static inline int
-console_get_str(std::string &input)
-{
-    return stream_get_str(input);
-}
-static inline int
-console_get_str(char **input)
-{
-    return stream_get_str(input);
-}
-
-//////////////////////////////////////////////////////
-// Functions to put string values to output stream  //
-//////////////////////////////////////////////////////
-
-// Generic function to put string value to output stream
-// with possible entering final 'endl' sign
-//
-// arg[in] stream   Output stream type
-// arg[in] put_endl Put 'endl' sign at the end of output
-// arg[in] val      String value to put onto stream
-//
-// return 0 - on success, -1 - on fault
-extern int stream_put_str(stream_t stream,
-                          bool put_endl, const std::string &val);
-extern int stream_put_str(stream_t stream,
-                          bool put_endl, const char *val);
-
-// Functions to put string value to STDOUT and
-// STDERR streams with possible entering final 'endl' sign
-//
-// arg[in] put_endl Put 'endl' sign at the end of output
-// arg[in] val      String value to put onto stream
-//
-// return 0 - on success, -1 - on fault
-// To STDOUT stream
-static inline int
-console_put_str_out(bool put_endl, const std::string &val)
-{
-    return stream_put_str(stream_t::STREAM_STDOUT, put_endl, val);
-}
-static inline int
-console_put_str_out(bool put_endl, const char *val)
-{
-    return stream_put_str(stream_t::STREAM_STDOUT, put_endl, val);
-}
-// To STDERR stream
-static inline int
-console_put_str_err(bool put_endl, const std::string &val)
-{
-    return stream_put_str(stream_t::STREAM_STDERR, put_endl, val);
-}
-static inline int
-console_put_str_err(bool put_endl, const char *val)
-{
-    return stream_put_str(stream_t::STREAM_STDERR, put_endl, val);
-}
-
-// Log message to STDOUT with closing 'endl' sign
-//
-// arg[in] msg Message to log
-//
-// return 0 - on success, -1 - on fault
-// To STDOUT stream
-static inline int
-console_log_msg(const std::string &msg)
-{
-    return console_put_str_out(true, msg);
-}
-static inline int
-console_log_msg(const char *msg)
-{
-    return console_put_str_out(true, msg);
-}
-
-// Log message to STDERR with closing 'endl' sign
-//
-// arg[in] msg Message to log
-//
-// return 0 - on success, -1 - on fault
-// To STDOUT stream
-static inline int
-console_log_err(const std::string &msg)
-{
-    return console_put_str_err(true, msg);
-}
-static inline int
-console_log_err(const char *msg)
-{
-    return console_put_str_err(true, msg);
-}
 #endif //HAVE_CONSOLEIO_H

@@ -11,3 +11,6 @@ first_app.depend
 first_app.layout
 # <name>.h.gch
 *.h.gch
+# Visual studio temporary files
+.vs
+ConsoleIOLibrary/.vs

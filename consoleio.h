@@ -119,7 +119,7 @@ typedef class scalar
         // Location space is enough to place
         // any scalar value from
         // uint8_t to long double
-        uint8_t     scalar_val[16];
+        uint8_t     scalar_val[16] = {0,};
         // Scalar value type
         scalar_t    scalar_type;
     public:

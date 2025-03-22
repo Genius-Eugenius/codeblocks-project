@@ -151,7 +151,7 @@ str2scalar(string &str, scalar &val)
     scalar_t            val_type        = val.val_type();
     int                 basis           = val.enum_base.basis();
     const char         *base_name       = val.enum_base.name();
-    const char         *val_type_name;
+    const char         *val_type_name   = "long";
 
     try
     {
@@ -460,7 +460,7 @@ BASE_GET_CONST(w_char)
 BASE_GET_CONST(w_short)
 BASE_GET_CONST(w_long)
 BASE_GET_CONST(w_double)
-#undef BASE_GET_CONST()
+#undef BASE_GET_CONST
 
 // Class 'base' operators.
 // Assignment operator.
